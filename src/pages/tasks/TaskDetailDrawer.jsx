@@ -107,7 +107,8 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   // Checklist editing
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
-  const canEdit = ['super_admin', 'project_manager'].includes(user?.role);
+  const canEdit = ['super_admin', 'project_manager', 'developer'].includes(user?.role);
+  const canManage = ['super_admin', 'project_manager'].includes(user?.role);
 
   const fetchData = useCallback(async () => {
     if (!taskId) return;
@@ -384,16 +385,18 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
           </div>
         </div>
 
-        {/* Due Date & Time */}
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Due Date & Time</label>
-          <input
-            type="datetime-local"
-            value={editForm.dueDate}
-            onChange={handleEditChange('dueDate')}
-            className="input-base"
-          />
-        </div>
+        {/* Due Date & Time — managers only */}
+        {canManage && (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Due Date & Time</label>
+            <input
+              type="datetime-local"
+              value={editForm.dueDate}
+              onChange={handleEditChange('dueDate')}
+              className="input-base"
+            />
+          </div>
+        )}
 
         {/* Progress */}
         <div>
@@ -431,41 +434,43 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
           )}
         </div>
 
-        {/* Assignees */}
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-            Assignees
-            {editForm.assignees?.length > 0 && (
-              <span className="ml-1.5 text-primary-600 dark:text-primary-400">{editForm.assignees.length} selected</span>
-            )}
-          </label>
-          <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-y-auto max-h-[180px] p-2 space-y-0.5">
-            {teamMembers.length === 0 ? (
-              <p className="text-sm text-slate-400 py-2 text-center">Loading team...</p>
-            ) : (
-              teamMembers.map((member) => (
-                <label
-                  key={member._id}
-                  className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
-                    editForm.assignees.includes(member._id) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={editForm.assignees.includes(member._id)}
-                    onChange={() => toggleEditAssignee(member._id)}
-                    className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
-                  />
-                  <Avatar name={member.name} src={member.avatar} size="sm" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{member.name}</p>
-                    <p className="text-xs text-slate-400 truncate">{member.projectRole}</p>
-                  </div>
-                </label>
-              ))
-            )}
+        {/* Assignees — managers only */}
+        {canManage && (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+              Assignees
+              {editForm.assignees?.length > 0 && (
+                <span className="ml-1.5 text-primary-600 dark:text-primary-400">{editForm.assignees.length} selected</span>
+              )}
+            </label>
+            <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-y-auto max-h-[180px] p-2 space-y-0.5">
+              {teamMembers.length === 0 ? (
+                <p className="text-sm text-slate-400 py-2 text-center">Loading team...</p>
+              ) : (
+                teamMembers.map((member) => (
+                  <label
+                    key={member._id}
+                    className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
+                      editForm.assignees.includes(member._id) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editForm.assignees.includes(member._id)}
+                      onChange={() => toggleEditAssignee(member._id)}
+                      className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                    />
+                    <Avatar name={member.name} src={member.avatar} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{member.name}</p>
+                      <p className="text-xs text-slate-400 truncate">{member.projectRole}</p>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Checklist Editor */}
         <div>
@@ -545,14 +550,16 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
           <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
           <div className="flex items-center gap-1">
             {canEdit && (
+              <button
+                onClick={startEditing}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                title="Edit task"
+              >
+                <EditIcon />
+              </button>
+            )}
+            {canManage && (
               <>
-                <button
-                  onClick={startEditing}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                  title="Edit task"
-                >
-                  <EditIcon />
-                </button>
                 {!confirmDelete ? (
                   <button
                     onClick={() => setConfirmDelete(true)}

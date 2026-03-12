@@ -422,7 +422,7 @@ export default function ProjectDetailPage() {
           </div>
           <span className="text-xs text-slate-400">{totalTaskCount} tasks</span>
         </div>
-        {canEdit && (
+        {(canEdit || user?.role === 'developer') && (
           <Button size="sm" onClick={() => setShowCreateTask(true)}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
             Add Task
@@ -979,7 +979,7 @@ export default function ProjectDetailPage() {
                 ['Status', <Badge key="s" color={PROJECT_STATUS_COLORS[project.status]} size="sm" dot>{PROJECT_STATUSES[project.status]}</Badge>],
                 ['Start', formatDate(project.startDate)],
                 ['End', formatDate(project.endDate)],
-                ['Budget', project.budget != null ? `$${project.budget.toLocaleString()}` : '--'],
+                ...(canEdit ? [['Budget', project.budget != null ? `$${project.budget.toLocaleString()}` : '--']] : []),
                 ['Created', formatDate(project.createdAt)],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between">
