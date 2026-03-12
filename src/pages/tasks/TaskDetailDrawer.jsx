@@ -43,6 +43,11 @@ const EditIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
   </svg>
 );
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+  </svg>
+);
 const CloseIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -90,6 +95,8 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   const [selectedStage, setSelectedStage] = useState('');
   const [transitioning, setTransitioning] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Edit mode state
   const [editing, setEditing] = useState(false);
@@ -293,6 +300,21 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
       setUploading(false);
     }
   }, [taskId, toast]);
+
+  const handleDeleteTask = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await taskService.delete(taskId);
+      toast.success('Task deleted');
+      onUpdated?.();
+      onClose();
+    } catch {
+      toast.error('Failed to delete task');
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }, [taskId, toast, onUpdated, onClose]);
 
   const handleDeleteAttachment = useCallback(async (attachmentId) => {
     try {
@@ -523,13 +545,41 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
           <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
           <div className="flex items-center gap-1">
             {canEdit && (
-              <button
-                onClick={startEditing}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                title="Edit task"
-              >
-                <EditIcon />
-              </button>
+              <>
+                <button
+                  onClick={startEditing}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                  title="Edit task"
+                >
+                  <EditIcon />
+                </button>
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 dark:hover:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"
+                    title="Delete task"
+                  >
+                    <TrashIcon />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1 bg-danger-50 dark:bg-danger-900/20 rounded-lg px-2 py-1">
+                    <span className="text-xs text-danger-600 dark:text-danger-400 font-medium">Delete?</span>
+                    <button
+                      onClick={handleDeleteTask}
+                      disabled={deleting}
+                      className="text-xs font-semibold text-danger-600 hover:text-danger-700 dark:text-danger-400 disabled:opacity-50 px-1"
+                    >
+                      {deleting ? '...' : 'Yes'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-xs font-medium text-slate-500 hover:text-slate-700 px-1"
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+              </>
             )}
             <button
               onClick={onClose}
