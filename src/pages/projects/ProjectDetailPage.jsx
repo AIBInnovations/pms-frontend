@@ -445,7 +445,7 @@ export default function ProjectDetailPage() {
           onTransition={handleTransition}
           onTaskClick={(task) => setSelectedTaskId(task._id)}
           projectId={id}
-          onTaskCreated={fetchData}
+          onTaskCreated={(newTask) => { if (newTask) setTasks((prev) => [newTask, ...prev]); else fetchData(); }}
           onPriorityChange={handlePriorityChange}
           teamMembers={[
             ...(project.projectManager ? [project.projectManager] : []),

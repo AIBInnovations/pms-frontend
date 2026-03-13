@@ -322,7 +322,7 @@ export default function TasksPage() {
           action={<Button onClick={() => setShowCreateModal(true)} size="sm">New Task</Button>}
         />
       ) : view === 'board' ? (
-        <KanbanBoard tasks={tasks} onTransition={handleTransition} onTaskClick={handleTaskClick} groupByProject />
+        <KanbanBoard tasks={tasks} onTransition={handleTransition} onTaskClick={handleTaskClick} groupByProject onTaskCreated={(newTask) => { if (newTask) setTasks((prev) => [newTask, ...prev]); }} />
       ) : (
         <>
           <div className="card overflow-hidden">
@@ -437,7 +437,7 @@ export default function TasksPage() {
       <CreateTaskModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onCreated={() => { setShowCreateModal(false); fetchTasks(); }}
+        onCreated={(newTask) => { setShowCreateModal(false); if (newTask) setTasks((prev) => [newTask, ...prev]); else fetchTasks(); }}
       />
 
       {/* Task Detail Drawer */}

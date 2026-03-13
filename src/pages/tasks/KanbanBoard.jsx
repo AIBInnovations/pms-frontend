@@ -234,10 +234,10 @@ function QuickAdd({ projectId, stage, onCreated }) {
     if (!title.trim() || !projectId) return;
     setSaving(true);
     try {
-      await taskService.create({ project: projectId, title: title.trim(), stage });
+      const res = await taskService.create({ project: projectId, title: title.trim(), stage });
       setTitle('');
       setOpen(false);
-      onCreated?.();
+      onCreated?.(res.data);
     } catch {
       // silently fail — user can retry
     } finally {

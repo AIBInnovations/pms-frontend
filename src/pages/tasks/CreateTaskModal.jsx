@@ -107,11 +107,11 @@ export default function CreateTaskModal({ isOpen, onClose, onCreated, defaultPro
       const payload = { ...form };
       if (payload.dueDate) payload.dueDate = new Date(payload.dueDate).toISOString();
       else delete payload.dueDate;
-      await taskService.create(payload);
+      const res = await taskService.create(payload);
       toast.success('Task created successfully');
       setForm({ ...initialForm });
       setTeamMembers([]);
-      onCreated();
+      onCreated(res.data);
     } catch (error) {
       const message = error.response?.data?.error?.message || 'Failed to create task';
       toast.error(message);
