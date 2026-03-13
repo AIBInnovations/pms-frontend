@@ -162,7 +162,7 @@ function AdminDashboard({ navigate, loading, data }) {
   const statCards = [
     { label: 'Total Projects', value: data.totalProjects, hint: `${data.activeProjects} active`, accent: true, link: '/projects' },
     { label: 'Total Users', value: data.totalUsers, hint: `${data.activeUsers} active members`, link: '/users' },
-    { label: 'Open Tasks', value: data.openTasks, hint: 'Across all projects', link: '/tasks' },
+    { label: 'Open Tasks', value: data.openTasks, hint: `${data.inProgressTasks ?? 0} in progress`, link: '/tasks' },
     { label: 'Open Bugs', value: data.openBugs, hint: data.openBugs ? `${data.criticalBugs} critical` : 'All clear', link: '/bugs' },
   ];
 
@@ -248,7 +248,7 @@ function AdminDashboard({ navigate, loading, data }) {
 function PMDashboard({ navigate, loading, data }) {
   const statCards = [
     { label: 'My Projects', value: data.myProjects, hint: `${data.activeProjects} active`, accent: true, link: '/projects' },
-    { label: 'Team Tasks', value: data.teamTasks, hint: 'In progress across your projects', link: '/tasks' },
+    { label: 'Open Tasks', value: data.teamTasks, hint: `${data.inProgressTasks ?? 0} in progress`, link: '/tasks' },
     { label: 'Open Bugs', value: data.openBugs, hint: data.criticalBugs ? `${data.criticalBugs} critical` : 'In your projects', link: '/bugs' },
   ];
 
@@ -408,17 +408,22 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        const openStages = ['backlog', 'todo', 'in_progress', 'in_review', 'testing'];
+
         if (isAdmin) {
-          const [projectRes, userRes, taskRes, bugStatsRes, activityRes] = await Promise.all([
+          const [projectRes, userRes, bugStatsRes, activityRes, ...stageCounts] = await Promise.all([
             projectService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: projects', e), { data: [], meta: { total: 0 } })),
             userService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: users', e), { data: [], meta: { total: 0 } })),
-            taskService.getAll({ limit: 1, stage: 'in_progress' }).catch(e => (console.error('Dashboard: tasks', e), { meta: { total: 0 } })),
             bugService.getStats().catch(e => (console.error('Dashboard: bugStats', e), { data: null })),
             activityService.getGlobal({ limit: 8 }).catch(e => (console.error('Dashboard: activity', e), { data: [] })),
+            ...openStages.map(stage => taskService.getAll({ limit: 1, stage }).catch(() => ({ meta: { total: 0 } }))),
           ]);
 
           const projectsByStatus = {};
           (projectRes?.data || []).forEach((p) => { projectsByStatus[p.status] = (projectsByStatus[p.status] || 0) + 1; });
+
+          const openTasks = stageCounts.reduce((sum, r) => sum + (r?.meta?.total ?? 0), 0);
+          const inProgressTasks = stageCounts[2]?.meta?.total ?? 0;
 
           const openBugs = bugStatsRes?.data?.byStatus
             ? Object.entries(bugStatsRes.data.byStatus).filter(([k]) => ['open', 'in_progress', 'reopened'].includes(k)).reduce((sum, [, v]) => sum + v, 0)
@@ -431,20 +436,24 @@ export default function DashboardPage() {
             totalUsers: userRes?.meta?.total ?? 0,
             activeUsers: (userRes?.data || []).filter((u) => u.status === 'active').length,
             users: userRes?.data || [],
-            openTasks: taskRes?.meta?.total ?? 0,
+            openTasks,
+            inProgressTasks,
             openBugs,
             criticalBugs: bugStatsRes?.data?.bySeverity?.critical || 0,
             bugStats: bugStatsRes?.data || null,
             activities: activityRes?.data || [],
           });
         } else if (isPM) {
-          const [projectRes, taskRes, bugStatsRes, workloadRes, activityRes] = await Promise.all([
+          const [projectRes, bugStatsRes, workloadRes, activityRes, ...stageCounts] = await Promise.all([
             projectService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: projects', e), { data: [], meta: { total: 0 } })),
-            taskService.getAll({ limit: 1, stage: 'in_progress' }).catch(e => (console.error('Dashboard: tasks', e), { meta: { total: 0 } })),
             bugService.getStats().catch(e => (console.error('Dashboard: bugStats', e), { data: null })),
             taskService.getWorkload().catch(e => (console.error('Dashboard: workload', e), { data: [] })),
             activityService.getGlobal({ limit: 8 }).catch(e => (console.error('Dashboard: activity', e), { data: [] })),
+            ...openStages.map(stage => taskService.getAll({ limit: 1, stage }).catch(() => ({ meta: { total: 0 } }))),
           ]);
+
+          const teamTasks = stageCounts.reduce((sum, r) => sum + (r?.meta?.total ?? 0), 0);
+          const inProgressTasks = stageCounts[2]?.meta?.total ?? 0;
 
           const openBugs = bugStatsRes?.data?.byStatus
             ? Object.entries(bugStatsRes.data.byStatus).filter(([k]) => ['open', 'in_progress', 'reopened'].includes(k)).reduce((sum, [, v]) => sum + v, 0)
@@ -453,7 +462,8 @@ export default function DashboardPage() {
           setData({
             myProjects: projectRes?.meta?.total ?? 0,
             activeProjects: (projectRes?.data || []).filter((p) => p.status === 'active').length,
-            teamTasks: taskRes?.meta?.total ?? 0,
+            teamTasks,
+            inProgressTasks,
             openBugs,
             criticalBugs: bugStatsRes?.data?.bySeverity?.critical || 0,
             bugStats: bugStatsRes?.data || null,
