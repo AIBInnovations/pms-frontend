@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { projectService, taskService, bugService, userService, activityService } from '../../services';
+import { projectService, taskService, userService, activityService } from '../../services';
 import {
   ROLE_LABELS, TASK_STAGES, TASK_STAGE_COLORS,
-  BUG_SEVERITY_COLORS, BUG_SEVERITIES,
   TASK_PRIORITIES, TASK_PRIORITY_COLORS,
   PROJECT_STATUSES, PROJECT_STATUS_COLORS,
 } from '../../utils/constants';
@@ -163,7 +162,7 @@ function AdminDashboard({ navigate, loading, data }) {
     { label: 'Total Projects', value: data.totalProjects, hint: `${data.activeProjects} active`, accent: true, link: '/projects' },
     { label: 'Total Users', value: data.totalUsers, hint: `${data.activeUsers} active members`, link: '/users' },
     { label: 'Open Tasks', value: data.openTasks, hint: `${data.inProgressTasks ?? 0} in progress`, link: '/tasks' },
-    { label: 'Open Bugs', value: data.openBugs, hint: data.openBugs ? `${data.criticalBugs} critical` : 'All clear', link: '/bugs' },
+    { label: 'Open Bugs', value: data.openBugs, hint: data.openBugs ? `${data.criticalBugs} critical` : 'All clear', link: '/tasks' },
   ];
 
   return (
@@ -189,16 +188,16 @@ function AdminDashboard({ navigate, loading, data }) {
           )}
         </SectionCard>
 
-        {/* Bug Summary */}
-        <SectionCard title="Bug Summary" action={<Button variant="ghost" size="sm" onClick={() => navigate('/bugs')}>View all</Button>}>
+        {/* Bug Summary by Priority */}
+        <SectionCard title="Bug Summary" action={<Button variant="ghost" size="sm" onClick={() => navigate('/tasks')}>View all</Button>}>
           {loading ? (
             <div className="space-y-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} variant="text" />)}</div>
-          ) : data.bugStats?.bySeverity && Object.keys(data.bugStats.bySeverity).length > 0 ? (
+          ) : data.openBugs > 0 ? (
             <div className="space-y-2.5">
-              {Object.entries(BUG_SEVERITIES).map(([key, label]) => (
+              {Object.entries(TASK_PRIORITIES).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
-                  <Badge size="sm" color={BUG_SEVERITY_COLORS[key]}>{label}</Badge>
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{data.bugStats.bySeverity[key] || 0}</span>
+                  <Badge size="sm" color={TASK_PRIORITY_COLORS[key]}>{label}</Badge>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{data.bugByPriority?.[key] || 0}</span>
                 </div>
               ))}
             </div>
@@ -249,7 +248,7 @@ function PMDashboard({ navigate, loading, data }) {
   const statCards = [
     { label: 'My Projects', value: data.myProjects, hint: `${data.activeProjects} active`, accent: true, link: '/projects' },
     { label: 'Open Tasks', value: data.teamTasks, hint: `${data.inProgressTasks ?? 0} in progress`, link: '/tasks' },
-    { label: 'Open Bugs', value: data.openBugs, hint: data.criticalBugs ? `${data.criticalBugs} critical` : 'In your projects', link: '/bugs' },
+    { label: 'Open Bugs', value: data.openBugs, hint: data.criticalBugs ? `${data.criticalBugs} critical` : 'In your projects', link: '/tasks' },
   ];
 
   return (
@@ -288,16 +287,16 @@ function PMDashboard({ navigate, loading, data }) {
           )}
         </SectionCard>
 
-        {/* Bug Summary */}
-        <SectionCard title="Bug Summary" action={<Button variant="ghost" size="sm" onClick={() => navigate('/bugs')}>View all</Button>}>
+        {/* Bug Summary by Priority */}
+        <SectionCard title="Bug Summary" action={<Button variant="ghost" size="sm" onClick={() => navigate('/tasks')}>View all</Button>}>
           {loading ? (
             <div className="space-y-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} variant="text" />)}</div>
-          ) : data.bugStats?.bySeverity && Object.keys(data.bugStats.bySeverity).length > 0 ? (
+          ) : data.openBugs > 0 ? (
             <div className="space-y-2.5">
-              {Object.entries(BUG_SEVERITIES).map(([key, label]) => (
+              {Object.entries(TASK_PRIORITIES).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
-                  <Badge size="sm" color={BUG_SEVERITY_COLORS[key]}>{label}</Badge>
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{data.bugStats.bySeverity[key] || 0}</span>
+                  <Badge size="sm" color={TASK_PRIORITY_COLORS[key]}>{label}</Badge>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{data.bugByPriority?.[key] || 0}</span>
                 </div>
               ))}
             </div>
@@ -321,7 +320,7 @@ function PMDashboard({ navigate, loading, data }) {
 function DevDashboard({ user, navigate, loading, data }) {
   const statCards = [
     { label: 'My Tasks', value: data.myTaskCount, hint: `${data.inProgressTasks} in progress`, accent: true, link: '/my-tasks' },
-    { label: 'Bugs Assigned', value: data.myBugs, hint: data.myBugs ? 'Need your attention' : 'All clear', link: '/bugs' },
+    { label: 'Bugs Assigned', value: data.myBugs, hint: data.myBugs ? 'Need your attention' : 'All clear', link: '/tasks' },
     { label: 'Upcoming Deadlines', value: data.upcomingDeadlines, hint: data.upcomingDeadlines ? 'Due within 7 days' : 'No upcoming deadlines', link: '/tasks' },
   ];
 
@@ -411,10 +410,10 @@ export default function DashboardPage() {
         const openStages = ['backlog', 'todo', 'in_progress', 'in_review', 'testing'];
 
         if (isAdmin) {
-          const [projectRes, userRes, bugStatsRes, activityRes, ...stageCounts] = await Promise.all([
+          const [projectRes, userRes, bugTasksRes, activityRes, ...stageCounts] = await Promise.all([
             projectService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: projects', e), { data: [], meta: { total: 0 } })),
             userService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: users', e), { data: [], meta: { total: 0 } })),
-            bugService.getStats().catch(e => (console.error('Dashboard: bugStats', e), { data: null })),
+            taskService.getAll({ limit: 200, type: 'bug' }).catch(e => (console.error('Dashboard: bugs', e), { data: [] })),
             activityService.getGlobal({ limit: 8 }).catch(e => (console.error('Dashboard: activity', e), { data: [] })),
             ...openStages.map(stage => taskService.getAll({ limit: 1, stage }).catch(() => ({ meta: { total: 0 } }))),
           ]);
@@ -425,9 +424,9 @@ export default function DashboardPage() {
           const openTasks = stageCounts.reduce((sum, r) => sum + (r?.meta?.total ?? 0), 0);
           const inProgressTasks = stageCounts[2]?.meta?.total ?? 0;
 
-          const openBugs = bugStatsRes?.data?.byStatus
-            ? Object.entries(bugStatsRes.data.byStatus).filter(([k]) => ['open', 'in_progress', 'reopened'].includes(k)).reduce((sum, [, v]) => sum + v, 0)
-            : 0;
+          const openBugTasks = (bugTasksRes?.data || []).filter(t => openStages.includes(t.stage));
+          const bugByPriority = {};
+          openBugTasks.forEach(t => { bugByPriority[t.priority] = (bugByPriority[t.priority] || 0) + 1; });
 
           setData({
             totalProjects: projectRes?.meta?.total ?? 0,
@@ -438,15 +437,15 @@ export default function DashboardPage() {
             users: userRes?.data || [],
             openTasks,
             inProgressTasks,
-            openBugs,
-            criticalBugs: bugStatsRes?.data?.bySeverity?.critical || 0,
-            bugStats: bugStatsRes?.data || null,
+            openBugs: openBugTasks.length,
+            criticalBugs: bugByPriority.critical || 0,
+            bugByPriority,
             activities: activityRes?.data || [],
           });
         } else if (isPM) {
-          const [projectRes, bugStatsRes, workloadRes, activityRes, ...stageCounts] = await Promise.all([
+          const [projectRes, bugTasksRes, workloadRes, activityRes, ...stageCounts] = await Promise.all([
             projectService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: projects', e), { data: [], meta: { total: 0 } })),
-            bugService.getStats().catch(e => (console.error('Dashboard: bugStats', e), { data: null })),
+            taskService.getAll({ limit: 200, type: 'bug' }).catch(e => (console.error('Dashboard: bugs', e), { data: [] })),
             taskService.getWorkload().catch(e => (console.error('Dashboard: workload', e), { data: [] })),
             activityService.getGlobal({ limit: 8 }).catch(e => (console.error('Dashboard: activity', e), { data: [] })),
             ...openStages.map(stage => taskService.getAll({ limit: 1, stage }).catch(() => ({ meta: { total: 0 } }))),
@@ -455,18 +454,18 @@ export default function DashboardPage() {
           const teamTasks = stageCounts.reduce((sum, r) => sum + (r?.meta?.total ?? 0), 0);
           const inProgressTasks = stageCounts[2]?.meta?.total ?? 0;
 
-          const openBugs = bugStatsRes?.data?.byStatus
-            ? Object.entries(bugStatsRes.data.byStatus).filter(([k]) => ['open', 'in_progress', 'reopened'].includes(k)).reduce((sum, [, v]) => sum + v, 0)
-            : 0;
+          const openBugTasks = (bugTasksRes?.data || []).filter(t => openStages.includes(t.stage));
+          const bugByPriority = {};
+          openBugTasks.forEach(t => { bugByPriority[t.priority] = (bugByPriority[t.priority] || 0) + 1; });
 
           setData({
             myProjects: projectRes?.meta?.total ?? 0,
             activeProjects: (projectRes?.data || []).filter((p) => p.status === 'active').length,
             teamTasks,
             inProgressTasks,
-            openBugs,
-            criticalBugs: bugStatsRes?.data?.bySeverity?.critical || 0,
-            bugStats: bugStatsRes?.data || null,
+            openBugs: openBugTasks.length,
+            criticalBugs: bugByPriority.critical || 0,
+            bugByPriority,
             workload: workloadRes?.data || [],
             activities: activityRes?.data || [],
           });
@@ -474,7 +473,7 @@ export default function DashboardPage() {
           // Developer
           const [myTasksRes, myBugsRes, activityRes] = await Promise.all([
             taskService.getAll({ limit: 50, assignee: user?._id }).catch(e => (console.error('Dashboard: myTasks', e), { data: [], meta: { total: 0 } })),
-            bugService.getAll({ limit: 10, assignee: user?._id }).catch(e => (console.error('Dashboard: myBugs', e), { data: [], meta: { total: 0 } })),
+            taskService.getAll({ limit: 10, assignee: user?._id, type: 'bug' }).catch(e => (console.error('Dashboard: myBugs', e), { data: [], meta: { total: 0 } })),
             activityService.getGlobal({ limit: 8 }).catch(e => (console.error('Dashboard: activity', e), { data: [] })),
           ]);
 
@@ -493,8 +492,8 @@ export default function DashboardPage() {
             myTaskCount: activeTasks.length,
             inProgressTasks,
             myTasks: activeTasks.slice(0, 5),
-            myBugs: myBugsRes?.meta?.total ?? 0,
-            myBugsList: (myBugsRes?.data || []).slice(0, 5),
+            myBugs: (myBugsRes?.data || []).filter(t => !['done', 'archived'].includes(t.stage)).length,
+            myBugsList: (myBugsRes?.data || []).filter(t => !['done', 'archived'].includes(t.stage)).slice(0, 5),
             upcomingDeadlines,
             priorityBreakdown,
             activities: activityRes?.data || [],
