@@ -1,6 +1,10 @@
 import api from './api';
 
 const reportService = {
+  async orgOverview() {
+    const { data } = await api.get('/reports/org-overview');
+    return data;
+  },
   async projectProgress(params = {}) {
     const { data } = await api.get('/reports/project-progress', { params });
     return data;

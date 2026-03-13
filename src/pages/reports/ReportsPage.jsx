@@ -5,8 +5,10 @@ import { Button, Badge, Avatar, Skeleton } from '../../components/ui';
 import ProjectProgressReport from './ProjectProgressReport';
 import BugSummaryReport from './BugSummaryReport';
 import DeveloperAnalyticsReport from './DeveloperAnalyticsReport';
+import OrgOverviewReport from './OrgOverviewReport';
 
 const tabs = [
+  { id: 'org', label: 'Organisation Overview' },
   { id: 'progress', label: 'Project Progress' },
   { id: 'bugs', label: 'Bug Summary' },
   { id: 'developer', label: 'Developer Analytics' },
@@ -20,7 +22,7 @@ const EXPORT_TYPES = {
 
 export default function ReportsPage() {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('progress');
+  const [activeTab, setActiveTab] = useState('org');
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState('');
@@ -76,7 +78,7 @@ export default function ReportsPage() {
           size="sm"
           onClick={handleExport}
           loading={exporting}
-          disabled={!selectedProject}
+          disabled={activeTab !== 'org' && !selectedProject}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -85,32 +87,30 @@ export default function ReportsPage() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-800 p-5">
-        <div className="flex flex-wrap items-end gap-4">
-          {/* Project selector */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Project</label>
-            {projectsLoading ? (
-              <Skeleton className="h-10 w-full rounded-xl" />
-            ) : (
-              <select
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2394a3b8%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M4.646%206.646a.5.5%200%200%201%20.708%200L8%209.293l2.646-2.647a.5.5%200%200%201%20.708.708l-3%203a.5.5%200%200%201-.708%200l-3-3a.5.5%200%200%201%200-.708z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat pr-10"
-              >
-                <option value="">Select a project...</option>
-                {projects.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
+      {/* Filters — only shown when a project-scoped tab is active */}
+      {activeTab !== 'org' && (
+        <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-800 p-5">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Project</label>
+              {projectsLoading ? (
+                <Skeleton className="h-10 w-full rounded-xl" />
+              ) : (
+                <select
+                  value={selectedProject}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2394a3b8%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M4.646%206.646a.5.5%200%200%201%20.708%200L8%209.293l2.646-2.647a.5.5%200%200%201%20.708.708l-3%203a.5.5%200%200%201-.708%200l-3-3a.5.5%200%200%201%200-.708z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat pr-10"
+                >
+                  <option value="">Select a project...</option>
+                  {projects.map((p) => (
+                    <option key={p._id} value={p._id}>{p.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
-
         </div>
-      </div>
+      )}
 
       {/* Pill tabs */}
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-full p-1 w-fit">
@@ -130,15 +130,10 @@ export default function ReportsPage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'progress' && (
-        <ProjectProgressReport project={selectedProject} />
-      )}
-      {activeTab === 'bugs' && (
-        <BugSummaryReport project={selectedProject} />
-      )}
-      {activeTab === 'developer' && (
-        <DeveloperAnalyticsReport project={selectedProject} />
-      )}
+      {activeTab === 'org' && <OrgOverviewReport />}
+      {activeTab === 'progress' && <ProjectProgressReport project={selectedProject} />}
+      {activeTab === 'bugs' && <BugSummaryReport project={selectedProject} />}
+      {activeTab === 'developer' && <DeveloperAnalyticsReport project={selectedProject} />}
     </div>
   );
 }
