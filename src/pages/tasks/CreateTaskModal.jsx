@@ -106,6 +106,7 @@ export default function CreateTaskModal({ isOpen, onClose, onCreated, defaultPro
     try {
       const payload = { ...form };
       if (payload.dueDate) payload.dueDate = new Date(payload.dueDate).toISOString();
+      else delete payload.dueDate;
       await taskService.create(payload);
       toast.success('Task created successfully');
       setForm({ ...initialForm });
