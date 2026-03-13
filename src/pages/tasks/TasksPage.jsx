@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { taskService, projectService } from '../../services';
+import { taskService, projectService, userService } from '../../services';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, Input, Select, EmptyState, Skeleton } from '../../components/ui';
 import {
@@ -24,14 +24,17 @@ export default function TasksPage() {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [projects, setProjects] = useState([]);
+  const [developers, setDevelopers] = useState([]);
+  const [assigneeFilter, setAssigneeFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const toast = useToast();
 
-  // Fetch project options for filter
+  // Fetch project and developer options for filters
   useEffect(() => {
     projectService.getAll({ limit: 100 }).then((res) => setProjects(res.data)).catch(() => {});
+    userService.getAll({ role: 'developer', status: 'active', limit: 100 }).then((res) => setDevelopers(res.data || [])).catch(() => {});
   }, []);
 
   const fetchTasks = useCallback(async () => {
@@ -43,6 +46,7 @@ export default function TasksPage() {
       if (projectFilter) params.project = projectFilter;
       if (priorityFilter) params.priority = priorityFilter;
       if (stageFilter) params.stage = stageFilter;
+      if (assigneeFilter) params.assignee = assigneeFilter;
       if (view === 'list') {
         params.sortBy = sortBy;
         params.sortOrder = sortOrder;
@@ -55,7 +59,7 @@ export default function TasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, projectFilter, priorityFilter, stageFilter, view, sortBy, sortOrder, toast]);
+  }, [page, search, projectFilter, priorityFilter, stageFilter, assigneeFilter, view, sortBy, sortOrder, toast]);
 
   useEffect(() => {
     fetchTasks();
@@ -176,6 +180,7 @@ export default function TasksPage() {
   const projectOptions = projects.map((p) => ({ value: p._id, label: `${p.code} — ${p.name}` }));
   const priorityOptions = Object.entries(TASK_PRIORITIES).map(([v, l]) => ({ value: v, label: l }));
   const stageOptions = Object.entries(TASK_STAGES).filter(([k]) => k !== 'archived').map(([v, l]) => ({ value: v, label: l }));
+  const developerOptions = developers.map((d) => ({ value: d._id, label: d.name }));
 
   const viewButtons = [
     { key: 'board', label: 'Board', icon: 'M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z' },
@@ -229,6 +234,12 @@ export default function TasksPage() {
                 onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
                 options={priorityOptions}
                 placeholder="All priorities"
+              />
+              <Select
+                value={assigneeFilter}
+                onChange={(e) => { setAssigneeFilter(e.target.value); setPage(1); }}
+                options={developerOptions}
+                placeholder="All developers"
               />
               {view === 'list' && (
                 <Select
