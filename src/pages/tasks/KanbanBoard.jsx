@@ -176,45 +176,65 @@ function QuickAssignButton({ task, teamMembers: teamMembersProp, onTaskUpdated }
   );
 }
 
-function TaskCard({ task, onDragStart, onDragOver, onClick, onPriorityChange, teamMembers, onTaskUpdated }) {
+function TaskCard({ task, onDragStart, onDragOver, onClick, onPriorityChange, teamMembers, onTaskUpdated, hasNewComment }) {
   return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, task)}
-      onDragOver={(e) => onDragOver(e, task)}
-      onClick={() => onClick(task)}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 p-3.5 cursor-grab hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-150 active:scale-[0.98] active:cursor-grabbing"
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[11px] text-slate-400">{task.taskId}</span>
-        <PriorityBadge task={task} onPriorityChange={onPriorityChange} />
-      </div>
-      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug">{task.title}</p>
-      {task.dueDate && (() => {
-        const urgency = getDueUrgency(task.dueDate);
-        return (
-          <span className={`inline-flex items-center gap-1 text-[11px] font-medium mt-2 px-1.5 py-0.5 rounded-md ${DUE_STYLES[urgency]}`}>
-            {urgency === 'overdue' && (
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
+    <div className={`relative ${hasNewComment ? 'pt-[22px]' : ''}`}>
+      {/* 3D peek badge — sits behind the card, visible only at the top */}
+      {hasNewComment && (
+        <div
+          className="absolute top-0 inset-x-0 h-8 rounded-t-2xl flex items-center justify-center gap-1.5 select-none pointer-events-none"
+          style={{
+            zIndex: 0,
+            background: 'linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)',
+            boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+          }}
+        >
+          <svg className="w-2.5 h-2.5 text-white/90" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+          </svg>
+          <span className="text-[10px] font-bold text-white tracking-wide drop-shadow-sm">New comment</span>
+        </div>
+      )}
+
+      <div
+        draggable
+        onDragStart={(e) => onDragStart(e, task)}
+        onDragOver={(e) => onDragOver(e, task)}
+        onClick={() => onClick(task)}
+        className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 p-3.5 cursor-grab hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-150 active:scale-[0.98] active:cursor-grabbing"
+        style={{ position: 'relative', zIndex: 1 }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-mono text-[11px] text-slate-400">{task.taskId}</span>
+          <PriorityBadge task={task} onPriorityChange={onPriorityChange} />
+        </div>
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug">{task.title}</p>
+        {task.dueDate && (() => {
+          const urgency = getDueUrgency(task.dueDate);
+          return (
+            <span className={`inline-flex items-center gap-1 text-[11px] font-medium mt-2 px-1.5 py-0.5 rounded-md ${DUE_STYLES[urgency]}`}>
+              {urgency === 'overdue' && (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              )}
+              {urgency === 'overdue' ? 'Overdue' : new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          );
+        })()}
+        <div className="flex items-center justify-between mt-2.5">
+          <div className="flex items-center gap-1">
+            {task.assignees?.slice(0, 3).map((a) => (
+              <Avatar key={a._id} name={a.name} size="xs" />
+            ))}
+            {task.assignees?.length > 3 && (
+              <span className="text-[10px] text-slate-400 ml-1">+{task.assignees.length - 3}</span>
             )}
-            {urgency === 'overdue' ? 'Overdue' : new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </span>
-        );
-      })()}
-      <div className="flex items-center justify-between mt-2.5">
-        <div className="flex items-center gap-1">
-          {task.assignees?.slice(0, 3).map((a) => (
-            <Avatar key={a._id} name={a.name} size="xs" />
-          ))}
-          {task.assignees?.length > 3 && (
-            <span className="text-[10px] text-slate-400 ml-1">+{task.assignees.length - 3}</span>
+          </div>
+          {(!task.assignees || task.assignees.length === 0) && (
+            <QuickAssignButton task={task} teamMembers={teamMembers} onTaskUpdated={onTaskUpdated} />
           )}
         </div>
-        {(!task.assignees || task.assignees.length === 0) && (
-          <QuickAssignButton task={task} teamMembers={teamMembers} onTaskUpdated={onTaskUpdated} />
-        )}
       </div>
     </div>
   );
@@ -301,7 +321,7 @@ function QuickAdd({ projectId, stage, onCreated }) {
   );
 }
 
-function Column({ stage, tasks, onDrop, onDragOver, onTaskDragStart, onTaskDragOverCard, onTaskClick, onPriorityChange, dropIndicator, projectId, onTaskCreated, teamMembers, onTaskUpdated, groupByProject }) {
+function Column({ stage, tasks, onDrop, onDragOver, onTaskDragStart, onTaskDragOverCard, onTaskClick, onPriorityChange, dropIndicator, projectId, onTaskCreated, teamMembers, onTaskUpdated, groupByProject, hasNew }) {
   const [dragOver, setDragOver] = useState(false);
 
   // Group tasks by project when groupByProject is true
@@ -372,6 +392,7 @@ function Column({ stage, tasks, onDrop, onDragOver, onTaskDragStart, onTaskDragO
                           onPriorityChange={onPriorityChange}
                           teamMembers={teamMembers}
                           onTaskUpdated={onTaskUpdated}
+                          hasNewComment={hasNew?.(task)}
                         />
                       </div>
                     );
@@ -398,6 +419,7 @@ function Column({ stage, tasks, onDrop, onDragOver, onTaskDragStart, onTaskDragO
                   onPriorityChange={onPriorityChange}
                   teamMembers={teamMembers}
                   onTaskUpdated={onTaskUpdated}
+                  hasNewComment={hasNew?.(task)}
                 />
               </div>
             ))}
@@ -417,7 +439,7 @@ function Column({ stage, tasks, onDrop, onDragOver, onTaskDragStart, onTaskDragO
   );
 }
 
-export default function KanbanBoard({ tasks, onTransition, onTaskClick, projectId, onTaskCreated, onPriorityChange, teamMembers, onTaskUpdated, groupByProject }) {
+export default function KanbanBoard({ tasks, onTransition, onTaskClick, projectId, onTaskCreated, onPriorityChange, teamMembers, onTaskUpdated, groupByProject, hasNew }) {
   const dragTaskRef = useRef(null);
   const [dropIndicator, setDropIndicator] = useState(null);
   const [columnOrder, setColumnOrder] = useState({});
@@ -556,6 +578,7 @@ export default function KanbanBoard({ tasks, onTransition, onTaskClick, projectI
           teamMembers={teamMembers}
           onTaskUpdated={onTaskUpdated}
           groupByProject={groupByProject}
+          hasNew={hasNew}
         />
       ))}
     </div>

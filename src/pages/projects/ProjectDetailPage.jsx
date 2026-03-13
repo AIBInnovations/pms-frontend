@@ -6,6 +6,7 @@ import KanbanBoard from '../tasks/KanbanBoard';
 import TaskDetailDrawer from '../tasks/TaskDetailDrawer';
 import CreateTaskModal from '../tasks/CreateTaskModal';
 import { projectService, taskService, userService } from '../../services';
+import useTaskSeen from '../../hooks/useTaskSeen';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, EmptyState, Skeleton, Input, Select } from '../../components/ui';
 import {
@@ -79,6 +80,7 @@ export default function ProjectDetailPage() {
   // Task modals
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const { markSeen, hasNew } = useTaskSeen();
 
   // Milestone form
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
@@ -443,7 +445,7 @@ export default function ProjectDetailPage() {
         <KanbanBoard
           tasks={tasks}
           onTransition={handleTransition}
-          onTaskClick={(task) => setSelectedTaskId(task._id)}
+          onTaskClick={(task) => { setSelectedTaskId(task._id); markSeen(task._id); }}
           projectId={id}
           onTaskCreated={(newTask) => { if (newTask) setTasks((prev) => [newTask, ...prev]); else fetchData(); }}
           onPriorityChange={handlePriorityChange}
@@ -452,6 +454,7 @@ export default function ProjectDetailPage() {
             ...(project.developers || []),
           ]}
           onTaskUpdated={(updatedTask) => setTasks((prev) => prev.map((t) => t._id === updatedTask._id ? updatedTask : t))}
+          hasNew={hasNew}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -462,7 +465,7 @@ export default function ProjectDetailPage() {
             {tasks.map((task) => (
               <div
                 key={task._id}
-                onClick={() => setSelectedTaskId(task._id)}
+                onClick={() => { setSelectedTaskId(task._id); markSeen(task._id); }}
                 className="grid grid-cols-[80px_1fr_100px_110px_100px] gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors items-center"
               >
                 <span className="font-mono text-xs text-slate-400">{task.taskId}</span>

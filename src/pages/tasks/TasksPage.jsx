@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { taskService, projectService, userService } from '../../services';
+import useTaskSeen from '../../hooks/useTaskSeen';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, Input, Select, EmptyState, Skeleton } from '../../components/ui';
 import {
@@ -30,6 +31,7 @@ export default function TasksPage() {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const toast = useToast();
+  const { markSeen, hasNew } = useTaskSeen();
 
   // Fetch project and developer options for filters
   useEffect(() => {
@@ -114,6 +116,7 @@ export default function TasksPage() {
 
   const handleTaskClick = (task) => {
     setSelectedTaskId(task._id);
+    markSeen(task._id);
   };
 
   const handleSort = (column) => {
@@ -322,7 +325,7 @@ export default function TasksPage() {
           action={<Button onClick={() => setShowCreateModal(true)} size="sm">New Task</Button>}
         />
       ) : view === 'board' ? (
-        <KanbanBoard tasks={tasks} onTransition={handleTransition} onTaskClick={handleTaskClick} groupByProject onTaskCreated={(newTask) => { if (newTask) setTasks((prev) => [newTask, ...prev]); }} />
+        <KanbanBoard tasks={tasks} onTransition={handleTransition} onTaskClick={handleTaskClick} groupByProject hasNew={hasNew} onTaskCreated={(newTask) => { if (newTask) setTasks((prev) => [newTask, ...prev]); }} />
       ) : (
         <>
           <div className="card overflow-hidden">
