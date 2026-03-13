@@ -162,12 +162,13 @@ function AdminDashboard({ navigate, loading, data }) {
     { label: 'Total Projects', value: data.totalProjects, hint: `${data.activeProjects} active`, accent: true, link: '/projects' },
     { label: 'Total Users', value: data.totalUsers, hint: `${data.activeUsers} active members`, link: '/users' },
     { label: 'Open Tasks', value: data.openTasks, hint: `${data.inProgressTasks ?? 0} in progress`, link: '/tasks' },
+    { label: 'Backlog', value: data.backlogTasks ?? 0, hint: 'Tasks not yet started', link: '/tasks' },
     { label: 'Open Bugs', value: data.openBugs, hint: data.openBugs ? `${data.criticalBugs} critical` : 'All clear', link: '/tasks' },
   ];
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         {statCards.map((s) => <StatCard key={s.label} {...s} loading={loading} navigate={navigate} />)}
       </div>
 
@@ -248,12 +249,13 @@ function PMDashboard({ navigate, loading, data }) {
   const statCards = [
     { label: 'My Projects', value: data.myProjects, hint: `${data.activeProjects} active`, accent: true, link: '/projects' },
     { label: 'Open Tasks', value: data.teamTasks, hint: `${data.inProgressTasks ?? 0} in progress`, link: '/tasks' },
+    { label: 'Backlog', value: data.backlogTasks ?? 0, hint: 'Tasks not yet started', link: '/tasks' },
     { label: 'Open Bugs', value: data.openBugs, hint: data.criticalBugs ? `${data.criticalBugs} critical` : 'In your projects', link: '/tasks' },
   ];
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {statCards.map((s) => <StatCard key={s.label} {...s} loading={loading} navigate={navigate} />)}
       </div>
 
@@ -320,13 +322,14 @@ function PMDashboard({ navigate, loading, data }) {
 function DevDashboard({ user, navigate, loading, data }) {
   const statCards = [
     { label: 'My Tasks', value: data.myTaskCount, hint: `${data.inProgressTasks} in progress`, accent: true, link: '/my-tasks' },
+    { label: 'Backlog', value: data.backlogTasks ?? 0, hint: 'Tasks not yet started', link: '/tasks' },
     { label: 'Bugs Assigned', value: data.myBugs, hint: data.myBugs ? 'Need your attention' : 'All clear', link: '/tasks' },
     { label: 'Upcoming Deadlines', value: data.upcomingDeadlines, hint: data.upcomingDeadlines ? 'Due within 7 days' : 'No upcoming deadlines', link: '/tasks' },
   ];
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {statCards.map((s) => <StatCard key={s.label} {...s} loading={loading} navigate={navigate} />)}
       </div>
 
@@ -437,6 +440,7 @@ export default function DashboardPage() {
             users: userRes?.data || [],
             openTasks,
             inProgressTasks,
+            backlogTasks: stageCounts[0]?.meta?.total ?? 0,
             openBugs: openBugTasks.length,
             criticalBugs: bugByPriority.critical || 0,
             bugByPriority,
@@ -463,6 +467,7 @@ export default function DashboardPage() {
             activeProjects: (projectRes?.data || []).filter((p) => p.status === 'active').length,
             teamTasks,
             inProgressTasks,
+            backlogTasks: stageCounts[0]?.meta?.total ?? 0,
             openBugs: openBugTasks.length,
             criticalBugs: bugByPriority.critical || 0,
             bugByPriority,
@@ -479,6 +484,7 @@ export default function DashboardPage() {
 
           const myTasks = myTasksRes?.data || [];
           const activeTasks = myTasks.filter((t) => !['done', 'archived'].includes(t.stage));
+          const backlogTasks = activeTasks.filter((t) => t.stage === 'backlog').length;
           const inProgressTasks = myTasks.filter((t) => t.stage === 'in_progress').length;
 
           const now = new Date();
@@ -491,6 +497,7 @@ export default function DashboardPage() {
           setData({
             myTaskCount: activeTasks.length,
             inProgressTasks,
+            backlogTasks,
             myTasks: activeTasks.slice(0, 5),
             myBugs: (myBugsRes?.data || []).filter(t => !['done', 'archived'].includes(t.stage)).length,
             myBugsList: (myBugsRes?.data || []).filter(t => !['done', 'archived'].includes(t.stage)).slice(0, 5),
