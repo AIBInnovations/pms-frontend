@@ -349,11 +349,11 @@ function DevDashboard({ user, navigate, loading, data }) {
                   onClick={() => navigate('/bugs')}
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="font-mono text-xs text-slate-400 mr-2">{bug.bugId}</span>
+                    <span className="font-mono text-xs text-slate-400 mr-2">{bug.taskId}</span>
                     <span className="text-sm text-slate-700 dark:text-slate-300">{bug.title}</span>
                   </div>
-                  <Badge color={BUG_SEVERITY_COLORS[bug.severity]} size="sm">
-                    {BUG_SEVERITIES[bug.severity] || bug.severity}
+                  <Badge color={TASK_PRIORITY_COLORS[bug.priority]} size="sm">
+                    {TASK_PRIORITIES[bug.priority] || bug.priority}
                   </Badge>
                 </div>
               ))}
