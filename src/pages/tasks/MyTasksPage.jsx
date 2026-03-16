@@ -3,6 +3,8 @@ import { taskService, projectService } from '../../services';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Input, Select, EmptyState, Skeleton } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import useTaskSeen from '../../hooks/useTaskSeen';
+import TaskDetailDrawer from './TaskDetailDrawer';
 import {
   TASK_STAGES,
   TASK_STAGE_COLORS,
@@ -11,14 +13,15 @@ import {
   KANBAN_COLUMNS,
 } from '../../utils/constants';
 
-function MyTaskCard({ task, onDragStart }) {
+function MyTaskCard({ task, onDragStart, onClick }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.stage !== 'done';
 
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, task)}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 p-3.5 cursor-grab hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-150 active:scale-[0.98] active:cursor-grabbing"
+      onClick={() => onClick(task)}
+      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 p-3.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
     >
       {/* Project code + Priority */}
       <div className="flex items-center justify-between mb-2">
@@ -49,7 +52,7 @@ function MyTaskCard({ task, onDragStart }) {
   );
 }
 
-function KanbanColumn({ stage, tasks, onDrop, onDragOver, onTaskDragStart }) {
+function KanbanColumn({ stage, tasks, onDrop, onDragOver, onTaskDragStart, onTaskClick }) {
   const [dragOver, setDragOver] = useState(false);
 
   // Group tasks by project
@@ -110,7 +113,7 @@ function KanbanColumn({ stage, tasks, onDrop, onDragOver, onTaskDragStart }) {
             </div>
             <div className="space-y-2">
               {group.tasks.map((task) => (
-                <MyTaskCard key={task._id} task={task} onDragStart={onTaskDragStart} />
+                <MyTaskCard key={task._id} task={task} onDragStart={onTaskDragStart} onClick={onTaskClick} />
               ))}
             </div>
           </div>
@@ -166,10 +169,12 @@ export default function MyTasksPage() {
   const { user } = useAuth();
   const toast = useToast();
   const dragTaskRef = useRef(null);
+  const { markSeen } = useTaskSeen();
 
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -202,6 +207,11 @@ export default function MyTasksPage() {
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  const handleTaskClick = (task) => {
+    setSelectedTaskId(task._id);
+    markSeen(task._id);
+  };
 
   // Drag and drop
   const handleDragStart = (e, task) => {
@@ -328,10 +338,18 @@ export default function MyTasksPage() {
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onTaskDragStart={handleDragStart}
+              onTaskClick={handleTaskClick}
             />
           ))}
         </div>
       )}
+
+      <TaskDetailDrawer
+        taskId={selectedTaskId}
+        isOpen={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onUpdated={fetchTasks}
+      />
     </div>
   );
 }
