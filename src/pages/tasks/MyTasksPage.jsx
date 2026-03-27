@@ -48,6 +48,28 @@ function MyTaskCard({ task, onDragStart, onClick }) {
           </span>
         </div>
       )}
+
+      {/* Blocked / On Hold indicators */}
+      {(task.isBlocked || task.isOnHold) && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {task.isBlocked && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/30 px-1.5 py-0.5 rounded-md" title={task.blockedReason || 'Blocked'}>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              Blocked
+            </span>
+          )}
+          {task.isOnHold && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md" title={task.onHoldReason || 'On Hold'}>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+              </svg>
+              On Hold
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

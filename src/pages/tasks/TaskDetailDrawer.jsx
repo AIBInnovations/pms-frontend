@@ -157,6 +157,8 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
       assignees: task.assignees?.map((a) => a._id) || [],
       isBlocked: task.isBlocked || false,
       blockedReason: task.blockedReason || '',
+      isOnHold: task.isOnHold || false,
+      onHoldReason: task.onHoldReason || '',
       checklists: task.checklists?.map((c) => ({ ...c })) || [],
     });
     setNewChecklistItem('');
@@ -233,6 +235,8 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
         progress: Number(editForm.progress),
         isBlocked: editForm.isBlocked,
         blockedReason: editForm.isBlocked ? editForm.blockedReason : '',
+        isOnHold: editForm.isOnHold,
+        onHoldReason: editForm.isOnHold ? editForm.onHoldReason : '',
         checklists: editForm.checklists.map((c) => ({ text: c.text, checked: c.checked, ...(c._id ? { _id: c._id } : {}) })),
       };
       // Remove undefined fields
@@ -420,7 +424,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
             <input
               type="checkbox"
               checked={editForm.isBlocked}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, isBlocked: e.target.checked }))}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, isBlocked: e.target.checked, isOnHold: e.target.checked ? false : prev.isOnHold }))}
               className="rounded border-slate-300 dark:border-slate-600 text-danger-600 focus:ring-danger-500"
             />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Blocked</span>
@@ -430,6 +434,26 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
               value={editForm.blockedReason}
               onChange={handleEditChange('blockedReason')}
               placeholder="Reason for blocking..."
+            />
+          )}
+        </div>
+
+        {/* On Hold */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={editForm.isOnHold}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, isOnHold: e.target.checked, isBlocked: e.target.checked ? false : prev.isBlocked }))}
+              className="rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500"
+            />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">On Hold</span>
+          </label>
+          {editForm.isOnHold && (
+            <Input
+              value={editForm.onHoldReason}
+              onChange={handleEditChange('onHoldReason')}
+              placeholder="Reason for putting on hold..."
             />
           )}
         </div>
@@ -802,6 +826,16 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
             <h4 className="text-sm font-semibold text-danger-700 mb-1">Blocked</h4>
             {task.blockedReason && (
               <p className="text-sm text-danger-600">{task.blockedReason}</p>
+            )}
+          </div>
+        )}
+
+        {/* On Hold indicator */}
+        {task.isOnHold && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <h4 className="text-sm font-semibold text-amber-700 mb-1">On Hold</h4>
+            {task.onHoldReason && (
+              <p className="text-sm text-amber-600">{task.onHoldReason}</p>
             )}
           </div>
         )}
