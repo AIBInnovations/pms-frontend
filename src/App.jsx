@@ -27,6 +27,7 @@ const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const MyTasksPage = lazy(() => import('./pages/tasks/MyTasksPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const AuditLogPage = lazy(() => import('./pages/settings/AuditLogPage'));
+const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 
 function PageLoader() {
   return (
@@ -82,6 +83,7 @@ export default function App() {
                 <Route path="/documents/:id" element={<DocumentEditor />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/my-tasks" element={<MyTasksPage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/reports" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER]}>
                     <ReportsPage />

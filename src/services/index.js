@@ -9,3 +9,4 @@ export { default as documentService } from './document.service';
 export { default as activityService } from './activity.service';
 export { default as notificationService } from './notification.service';
 export { default as reportService } from './report.service';
+export { default as attendanceService } from './attendance.service';
