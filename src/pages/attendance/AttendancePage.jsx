@@ -104,7 +104,6 @@ export default function AttendancePage() {
       toast.error(msg);
     } finally {
       setChecking(false);
-      setSuspiciousPrompt(null);
     }
   };
 
