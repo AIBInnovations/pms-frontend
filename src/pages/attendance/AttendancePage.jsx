@@ -100,8 +100,9 @@ export default function AttendancePage() {
       fetchSummary();
       if (isAdmin) fetchTodayAll();
     } catch (error) {
-      const msg = error.response?.data?.error?.message || 'Failed to check in';
-      toast.error(msg);
+      const errData = error.response?.data?.error;
+      const details = errData?.details?.map((d) => `${d.field}: ${d.message}`).join(', ');
+      toast.error(details || errData?.message || 'Failed to check in');
     } finally {
       setChecking(false);
     }
