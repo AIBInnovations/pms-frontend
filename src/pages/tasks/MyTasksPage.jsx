@@ -21,7 +21,13 @@ function MyTaskCard({ task, onDragStart, onClick }) {
       draggable
       onDragStart={(e) => onDragStart(e, task)}
       onClick={() => onClick(task)}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 p-3.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
+      className={`rounded-xl border p-3.5 cursor-pointer hover:shadow-sm transition-all duration-150 active:scale-[0.98] ${
+        task.isBlocked
+          ? 'bg-red-50/80 dark:bg-red-950/30 border-red-300 dark:border-red-800 ring-1 ring-red-200 dark:ring-red-900'
+          : task.isOnHold
+          ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-200 dark:ring-amber-900'
+          : 'bg-white dark:bg-slate-800 border-slate-200/60 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
+      }`}
     >
       {/* Project code + Priority */}
       <div className="flex items-center justify-between mb-2">
