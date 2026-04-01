@@ -11,7 +11,7 @@ const initialForm = {
   startDate: '',
   endDate: '',
   budget: '',
-  projectManager: '',
+  projectManagers: [],
   developers: [],
   domains: [],
 };
@@ -22,7 +22,7 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [pmOptions, setPmOptions] = useState([]);
+  const [pmList, setPmList] = useState([]);
   const [developerList, setDeveloperList] = useState([]);
   const toast = useToast();
 
@@ -44,7 +44,7 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
         const adminRes = await userService.getAll({ role: 'super_admin', status: 'active', limit: 100 });
 
         const pmUsers = [...(pmRes.data || []), ...(adminRes.data || [])];
-        setPmOptions(pmUsers.map((u) => ({ value: u._id, label: u.name })));
+        setPmList(pmUsers);
         setDeveloperList(devRes.data || []);
       } catch {
         toast.error('Failed to load team members');
@@ -57,6 +57,16 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
     if (errors[field]) setErrors({ ...errors, [field]: '' });
+  };
+
+  const togglePm = (pmId) => {
+    setForm((prev) => ({
+      ...prev,
+      projectManagers: prev.projectManagers.includes(pmId)
+        ? prev.projectManagers.filter((id) => id !== pmId)
+        : [...prev.projectManagers, pmId],
+    }));
+    if (errors.projectManagers) setErrors({ ...errors, projectManagers: '' });
   };
 
   const toggleDeveloper = (devId) => {
@@ -72,7 +82,7 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = 'Name is required';
     if (!form.type) newErrors.type = 'Type is required';
-    if (!form.projectManager) newErrors.projectManager = 'Project Manager is required';
+    if (!form.projectManagers.length) newErrors.projectManagers = 'At least one Project Manager is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -167,14 +177,45 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
         {/* Right column */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project Manager <span className="text-red-400">*</span></label>
-            <Select
-              value={form.projectManager}
-              onChange={handleChange('projectManager')}
-              options={pmOptions}
-              placeholder="Select PM"
-              error={errors.projectManager}
-            />
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Project Managers <span className="text-red-400">*</span>
+              {form.projectManagers.length > 0 && (
+                <span className="ml-1.5 text-xs font-normal text-primary-600 dark:text-primary-400">
+                  {form.projectManagers.length} selected
+                </span>
+              )}
+            </label>
+            <div className="max-h-[140px] overflow-y-auto space-y-0.5 border border-slate-200 dark:border-slate-600 rounded-xl p-2">
+              {pmList.length === 0 && (
+                <p className="text-sm text-slate-400 py-2 text-center">No PMs available</p>
+              )}
+              {pmList.map((pm) => (
+                <label
+                  key={pm._id}
+                  className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
+                    form.projectManagers.includes(pm._id)
+                      ? 'bg-primary-50 dark:bg-primary-900/20'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                    checked={form.projectManagers.includes(pm._id)}
+                    onChange={() => togglePm(pm._id)}
+                  />
+                  {pm.avatar ? (
+                    <img src={pm.avatar} alt={pm.name} className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 flex items-center justify-center text-xs font-medium">
+                      {pm.name?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{pm.name}</span>
+                </label>
+              ))}
+            </div>
+            {errors.projectManagers && <p className="text-xs text-red-500 mt-1">{errors.projectManagers}</p>}
           </div>
 
           <div>

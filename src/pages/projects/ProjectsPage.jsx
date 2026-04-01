@@ -176,10 +176,16 @@ export default function ProjectsPage() {
               {/* Bottom row: type + PM */}
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <Badge color="default">{PROJECT_TYPES[project.type] || project.type}</Badge>
-                {project.projectManager && (
-                  <div className="flex items-center gap-2">
-                    <Avatar name={project.projectManager.name} size="sm" />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{project.projectManager.name}</span>
+                {project.projectManagers?.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex -space-x-1.5">
+                      {project.projectManagers.slice(0, 3).map((pm) => (
+                        <Avatar key={pm._id} name={pm.name} size="sm" />
+                      ))}
+                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {project.projectManagers.length === 1 ? project.projectManagers[0].name : `${project.projectManagers.length} PMs`}
+                    </span>
                   </div>
                 )}
               </div>

@@ -213,7 +213,7 @@ export default function ProjectDetailPage() {
       startDate: toInputDate(project.startDate),
       endDate: toInputDate(project.endDate),
       budget: project.budget ?? '',
-      projectManager: project.projectManager?._id || '',
+      projectManagers: (project.projectManagers || []).map((pm) => pm._id),
       developers: (project.developers || []).map((d) => d._id),
       githubLinks: (project.githubLinks || []).map((l) => ({ ...l })),
       domains: project.domains || [],
@@ -226,7 +226,7 @@ export default function ProjectDetailPage() {
         userService.getAll({ role: 'developer', status: 'active', limit: 100 }),
         userService.getAll({ role: 'super_admin', status: 'active', limit: 100 }),
       ]);
-      setPmOptions([...(pmRes.data || []), ...(adminRes.data || [])].map((u) => ({ value: u._id, label: u.name })));
+      setPmOptions([...(pmRes.data || []), ...(adminRes.data || [])]);
       setDevOptions(devRes.data || []);
     } catch {
       toast.error('Failed to load user options');
@@ -317,7 +317,7 @@ export default function ProjectDetailPage() {
 
   // ─── Inline team edit ──────────────────────────────
   const startTeamEditing = async () => {
-    setTeamPm(project.projectManager?._id || '');
+    setTeamPm((project.projectManagers || []).map((pm) => pm._id));
     setTeamDevs((project.developers || []).map((d) => d._id));
     setTeamEditing(true);
     try {
@@ -326,7 +326,7 @@ export default function ProjectDetailPage() {
         userService.getAll({ role: 'developer', status: 'active', limit: 100 }),
         userService.getAll({ role: 'super_admin', status: 'active', limit: 100 }),
       ]);
-      setPmOptions([...(pmRes.data || []), ...(adminRes.data || [])].map((u) => ({ value: u._id, label: u.name })));
+      setPmOptions([...(pmRes.data || []), ...(adminRes.data || [])]);
       setDevOptions(devRes.data || []);
     } catch {
       toast.error('Failed to load user options');
@@ -336,7 +336,7 @@ export default function ProjectDetailPage() {
   const saveTeam = async () => {
     setTeamSaving(true);
     try {
-      const res = await projectService.update(id, { projectManager: teamPm, developers: teamDevs });
+      const res = await projectService.update(id, { projectManagers: teamPm, developers: teamDevs });
       setProject(res.data);
       setTeamEditing(false);
       toast.success('Team updated. Removed members have been unassigned from tasks.');
@@ -450,7 +450,7 @@ export default function ProjectDetailPage() {
           onTaskCreated={(newTask) => { if (newTask) setTasks((prev) => [newTask, ...prev]); else fetchData(); }}
           onPriorityChange={handlePriorityChange}
           teamMembers={[
-            ...(project.projectManager ? [project.projectManager] : []),
+            ...(project.projectManagers || []),
             ...(project.developers || []),
           ]}
           onTaskUpdated={(updatedTask) => setTasks((prev) => prev.map((t) => t._id === updatedTask._id ? updatedTask : t))}
@@ -582,9 +582,9 @@ export default function ProjectDetailPage() {
 
   // ─── Tab: Team ──────────────────────────────────────
   const renderTeam = () => {
-    const pm = project.projectManager;
+    const pms = project.projectManagers || [];
     const developers = project.developers || [];
-    const memberCount = (pm ? 1 : 0) + developers.length;
+    const memberCount = pms.length + developers.length;
 
     if (teamEditing && canEdit) {
       return (
@@ -599,8 +599,20 @@ export default function ProjectDetailPage() {
 
           <div className="card p-5 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Project Manager</label>
-              <Select value={teamPm} onChange={(e) => setTeamPm(e.target.value)} options={pmOptions} placeholder="Select PM" />
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                Project Managers
+                {teamPm.length > 0 && <span className="ml-1 text-primary-600">{teamPm.length} selected</span>}
+              </label>
+              <div className="border border-slate-200 dark:border-slate-600 rounded-xl max-h-[180px] overflow-y-auto p-2 space-y-0.5">
+                {pmOptions.length === 0 && <p className="text-sm text-slate-400 py-2 text-center">No PMs available</p>}
+                {pmOptions.map((pm) => (
+                  <label key={pm._id} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${teamPm.includes(pm._id) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                    <input type="checkbox" className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500" checked={teamPm.includes(pm._id)} onChange={() => setTeamPm((prev) => prev.includes(pm._id) ? prev.filter((id) => id !== pm._id) : [...prev, pm._id])} />
+                    <Avatar name={pm.name} size="xs" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">{pm.name}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -639,21 +651,24 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
-        {!pm && developers.length === 0 ? (
+        {pms.length === 0 && developers.length === 0 ? (
           <div className="card"><EmptyState title="No team members" description="Click Manage Team to assign members." /></div>
         ) : (
           <div className="space-y-4">
-            {/* Project Manager */}
-            {pm && (
+            {/* Project Managers */}
+            {pms.length > 0 && (
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Project Manager</p>
-                <div className="card p-4 flex items-center gap-4 border-l-3 border-l-primary-500">
-                  <Avatar name={pm.name} src={pm.avatar} size="lg" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{pm.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{pm.email}</p>
-                  </div>
-                  <Badge color="primary" size="sm">Lead</Badge>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Project Managers ({pms.length})</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {pms.map((pm) => (
+                    <div key={pm._id} className="card p-4 flex items-center gap-3 border-l-3 border-l-primary-500">
+                      <Avatar name={pm.name} src={pm.avatar} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{pm.name}</p>
+                        <p className="text-xs text-slate-400 truncate">{pm.email}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -725,8 +740,18 @@ export default function ProjectDetailPage() {
                 <Input type="number" value={editForm.budget} onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })} placeholder="0.00" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Project Manager</label>
-                <Select value={editForm.projectManager} onChange={(e) => setEditForm({ ...editForm, projectManager: e.target.value })} options={pmOptions} placeholder="Select PM" />
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                  Project Managers
+                  {editForm.projectManagers?.length > 0 && <span className="ml-1 text-primary-600">{editForm.projectManagers.length}</span>}
+                </label>
+                <div className="border border-slate-200 dark:border-slate-600 rounded-xl max-h-[140px] overflow-y-auto p-2 space-y-0.5">
+                  {pmOptions.map((pm) => (
+                    <label key={pm._id} className={`flex items-center gap-2 py-1 px-2 rounded-lg cursor-pointer transition-colors text-sm ${editForm.projectManagers?.includes(pm._id) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                      <input type="checkbox" className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500" checked={editForm.projectManagers?.includes(pm._id)} onChange={() => setEditForm((prev) => ({ ...prev, projectManagers: prev.projectManagers.includes(pm._id) ? prev.projectManagers.filter((id) => id !== pm._id) : [...prev.projectManagers, pm._id] }))} />
+                      <span className="text-slate-700 dark:text-slate-300">{pm.name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -823,7 +848,7 @@ export default function ProjectDetailPage() {
     }
 
     // Read-only view
-    const pm = project.projectManager;
+    const pmsOverview = project.projectManagers || [];
     const totalTasks = taskStats ? Object.values(taskStats).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) : 0;
     const doneTasks = taskStats?.done || 0;
     const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -1013,13 +1038,15 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
-            {pm && (
-              <div className="card p-4 flex items-center gap-3">
-                <Avatar name={pm.name} src={pm.avatar} size="sm" />
-                <div className="min-w-0">
-                  <p className="text-xs text-slate-400">Project Manager</p>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{pm.name}</p>
-                </div>
+            {pmsOverview.length > 0 && (
+              <div className="card p-4 space-y-2.5">
+                <p className="text-xs text-slate-400">Project Managers</p>
+                {pmsOverview.map((pm) => (
+                  <div key={pm._id} className="flex items-center gap-3">
+                    <Avatar name={pm.name} src={pm.avatar} size="sm" />
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{pm.name}</p>
+                  </div>
+                ))}
               </div>
             )}
           </div>
