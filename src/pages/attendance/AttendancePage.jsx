@@ -42,15 +42,6 @@ export default function AttendancePage() {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [todayAll, setTodayAll] = useState([]);
   const [loadingAll, setLoadingAll] = useState(false);
-  const [networkName, setNetworkName] = useState('');
-  const [suspiciousPrompt, setSuspiciousPrompt] = useState(null);
-
-  // Detect network name via RTCPeerConnection for local IP hint
-  useEffect(() => {
-    // We rely on user sending network info from their OS
-    // For web, we can try navigator.connection but it's limited
-    // We'll send empty and let backend decide based on IP
-  }, []);
 
   const fetchToday = useCallback(async () => {
     setLoadingToday(true);
@@ -94,14 +85,14 @@ export default function AttendancePage() {
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
   useEffect(() => { fetchTodayAll(); }, [fetchTodayAll]);
 
-  const handleCheckIn = async (confirmedNetworkName) => {
+  const handleCheckIn = async () => {
     setChecking(true);
     try {
-      const res = await attendanceService.checkIn({ networkName: confirmedNetworkName || networkName });
+      const res = await attendanceService.checkIn({});
       setToday(res.data);
 
       if (res.warnings?.length > 0) {
-        toast.error(res.warnings.join('. '));
+        toast.error(res.warnings.join(' '));
       } else {
         toast.success(res.message || 'Checked in!');
       }
@@ -183,18 +174,8 @@ export default function AttendancePage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Network name input */}
-              {!checkedIn && (
-                <input
-                  type="text"
-                  placeholder="WiFi name (optional)"
-                  value={networkName}
-                  onChange={(e) => setNetworkName(e.target.value)}
-                  className="input-base text-sm w-44"
-                />
-              )}
               {!checkedIn ? (
-                <Button onClick={() => handleCheckIn()} loading={checking}>
+                <Button onClick={handleCheckIn} loading={checking}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -212,27 +193,6 @@ export default function AttendancePage() {
                   Done for today
                 </Badge>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Suspicious prompt modal */}
-      {suspiciousPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Different Network Detected</h3>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{suspiciousPrompt}</p>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setSuspiciousPrompt(null)}>Cancel</Button>
-              <Button size="sm" onClick={() => handleCheckIn(networkName)}>Check In Anyway</Button>
             </div>
           </div>
         </div>
@@ -339,7 +299,6 @@ export default function AttendancePage() {
                     <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Check In</th>
                     <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Check Out</th>
                     <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">IP</th>
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Network</th>
                     <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Status</th>
                   </tr>
                 </thead>
@@ -358,7 +317,6 @@ export default function AttendancePage() {
                       <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{formatTime(r.checkIn)}</td>
                       <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{formatTime(r.checkOut)}</td>
                       <td className="px-3 py-2.5 text-xs font-mono text-slate-400">{r.ip}</td>
-                      <td className="px-3 py-2.5 text-xs text-slate-500">{r.networkName || '--'}</td>
                       <td className="px-3 py-2.5">
                         {r.isSuspicious ? (
                           <Badge color="warning" size="sm" title={r.suspiciousReason}>Suspicious</Badge>
