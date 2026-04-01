@@ -172,7 +172,7 @@ export default function AttendancePage() {
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
               {!checkedIn ? (
                 <Button onClick={handleCheckIn} loading={checking}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
