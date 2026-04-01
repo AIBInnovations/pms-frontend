@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import CommentSection from '../../components/comments/CommentSection';
 import { taskService, projectService, bugService } from '../../services';
@@ -18,7 +18,6 @@ import {
 
 const typeOptions = Object.entries(TASK_TYPES).map(([value, label]) => ({ value, label }));
 const priorityOptions = Object.entries(TASK_PRIORITIES).map(([value, label]) => ({ value, label }));
-const stageOptions = Object.entries(TASK_STAGES).map(([value, label]) => ({ value, label }));
 
 function formatDate(dateStr) {
   if (!dateStr) return null;
@@ -38,11 +37,6 @@ function formatDateTime(dateStr) {
 }
 
 // ─── Icons ───────────────────────────────────────────
-const EditIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-  </svg>
-);
 const TrashIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -85,6 +79,120 @@ function LoadingSkeleton() {
   );
 }
 
+// ─── Inline editable field ───────────────────────────
+function InlineField({ value, onSave, canEdit, multiline, placeholder, className = '' }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const ref = useRef(null);
+
+  useEffect(() => { setDraft(value); }, [value]);
+
+  const commit = () => {
+    setEditing(false);
+    if (draft !== value) onSave(draft);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+    if (!multiline && e.key === 'Enter') commit();
+  };
+
+  if (!canEdit) {
+    return multiline ? (
+      <p className={`text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap ${className}`}>
+        {value || <span className="italic text-slate-400">{placeholder || 'None'}</span>}
+      </p>
+    ) : (
+      <span className={className}>{value || <span className="italic text-slate-400">{placeholder || 'None'}</span>}</span>
+    );
+  }
+
+  if (!editing) {
+    return multiline ? (
+      <p
+        onClick={() => { setEditing(true); setTimeout(() => ref.current?.focus(), 0); }}
+        className={`text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors ${className}`}
+      >
+        {value || <span className="italic text-slate-400">{placeholder || 'Click to add...'}</span>}
+      </p>
+    ) : (
+      <span
+        onClick={() => { setEditing(true); setTimeout(() => ref.current?.focus(), 0); }}
+        className={`cursor-pointer rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors ${className}`}
+      >
+        {value || <span className="italic text-slate-400">{placeholder || 'Click to add...'}</span>}
+      </span>
+    );
+  }
+
+  return multiline ? (
+    <textarea
+      ref={ref}
+      autoFocus
+      className="input-base min-h-[80px] resize-none text-sm w-full"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+    />
+  ) : (
+    <input
+      ref={ref}
+      autoFocus
+      type="text"
+      className="input-base text-sm w-full"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+    />
+  );
+}
+
+// ─── Inline select ───────────────────────────────────
+function InlineSelect({ value, options, display, onSave, canEdit, badge, badgeColor }) {
+  const [editing, setEditing] = useState(false);
+
+  if (!canEdit) {
+    return badge ? (
+      <Badge color={badgeColor} size="sm">{display}</Badge>
+    ) : (
+      <span className="text-sm text-slate-900 dark:text-slate-100">{display}</span>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        className="cursor-pointer"
+      >
+        {badge ? (
+          <Badge color={badgeColor} size="sm" className="hover:ring-2 hover:ring-slate-300 dark:hover:ring-slate-600 transition-all">{display}</Badge>
+        ) : (
+          <span className="text-sm text-slate-900 dark:text-slate-100 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">{display}</span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <select
+      autoFocus
+      value={value}
+      onChange={(e) => { setEditing(false); if (e.target.value !== value) onSave(e.target.value); }}
+      onBlur={() => setEditing(false)}
+      className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
+
 export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated }) {
   const { user } = useAuth();
   const toast = useToast();
@@ -97,14 +205,8 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // Edit mode state
-  const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({});
   const [teamMembers, setTeamMembers] = useState([]);
-  const [saving, setSaving] = useState(false);
-
-  // Checklist editing
+  const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
   const canEdit = ['super_admin', 'project_manager', 'developer'].includes(user?.role);
@@ -139,143 +241,77 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
       setSubtasks([]);
       setLinkedBugs([]);
       setSelectedStage('');
-      setEditing(false);
       setTeamMembers([]);
+      setShowAssigneePicker(false);
     }
   }, [taskId, isOpen, fetchData]);
 
-  // When entering edit mode, populate form and fetch team
-  const startEditing = useCallback(async () => {
-    if (!task) return;
-    setEditForm({
-      title: task.title || '',
-      description: task.description || '',
-      type: task.type || 'feature',
-      priority: task.priority || 'medium',
-      dueDate: toDatetimeLocal(task.dueDate),
-      progress: task.progress ?? 0,
-      assignees: task.assignees?.map((a) => a._id) || [],
-      isBlocked: task.isBlocked || false,
-      blockedReason: task.blockedReason || '',
-      isOnHold: task.isOnHold || false,
-      onHoldReason: task.onHoldReason || '',
-      checklists: task.checklists?.map((c) => ({ ...c })) || [],
-    });
-    setNewChecklistItem('');
-    // Fetch team members for the assignee picker
-    if (task.project?._id || task.project) {
-      try {
-        const projectId = task.project?._id || task.project;
-        const { data } = await projectService.getTeam(projectId);
-        setTeamMembers(data || []);
-      } catch {
-        console.error('Failed to load team members');
-      }
-    }
-    setEditing(true);
-  }, [task]);
-
-  const cancelEditing = () => {
-    setEditing(false);
-    setEditForm({});
-    setTeamMembers([]);
-    setNewChecklistItem('');
-  };
-
-  const handleEditChange = (field) => (e) => {
-    setEditForm((prev) => ({ ...prev, [field]: e.target.value }));
-  };
-
-  const toggleEditAssignee = (memberId) => {
-    setEditForm((prev) => ({
-      ...prev,
-      assignees: prev.assignees.includes(memberId)
-        ? prev.assignees.filter((id) => id !== memberId)
-        : [...prev.assignees, memberId],
-    }));
-  };
-
-  const handleChecklistItemChange = (index, text) => {
-    setEditForm((prev) => ({
-      ...prev,
-      checklists: prev.checklists.map((item, i) => (i === index ? { ...item, text } : item)),
-    }));
-  };
-
-  const removeChecklistItem = (index) => {
-    setEditForm((prev) => ({
-      ...prev,
-      checklists: prev.checklists.filter((_, i) => i !== index),
-    }));
-  };
-
-  const addChecklistItem = () => {
-    if (!newChecklistItem.trim()) return;
-    setEditForm((prev) => ({
-      ...prev,
-      checklists: [...prev.checklists, { text: newChecklistItem.trim(), checked: false }],
-    }));
-    setNewChecklistItem('');
-  };
-
-  const saveEdits = async () => {
-    if (!editForm.title.trim()) {
-      toast.error('Title is required');
-      return;
-    }
-    setSaving(true);
+  // Fetch team when needed
+  const ensureTeamLoaded = useCallback(async () => {
+    if (teamMembers.length > 0 || !task) return;
+    const projectId = task.project?._id || task.project;
+    if (!projectId) return;
     try {
-      const payload = {
-        title: editForm.title.trim(),
-        description: editForm.description.trim(),
-        type: editForm.type,
-        priority: editForm.priority,
-        assignees: editForm.assignees,
-        dueDate: editForm.dueDate ? new Date(editForm.dueDate).toISOString() : null,
-        progress: Number(editForm.progress),
-        isBlocked: editForm.isBlocked,
-        blockedReason: editForm.isBlocked ? editForm.blockedReason : '',
-        isOnHold: editForm.isOnHold,
-        onHoldReason: editForm.isOnHold ? editForm.onHoldReason : '',
-        checklists: editForm.checklists.map((c) => ({ text: c.text, checked: c.checked, ...(c._id ? { _id: c._id } : {}) })),
-      };
-      // Remove undefined fields
-      Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+      const { data } = await projectService.getTeam(projectId);
+      setTeamMembers(data || []);
+    } catch { /* ignore */ }
+  }, [task, teamMembers.length]);
 
-      await taskService.update(taskId, payload);
-      toast.success('Task updated');
-      setEditing(false);
-      fetchData();
+  // Save a single field
+  const saveField = useCallback(async (patch) => {
+    try {
+      await taskService.update(taskId, patch);
+      setTask((prev) => ({ ...prev, ...patch }));
       onUpdated?.();
     } catch (error) {
-      const message = error.response?.data?.error?.message || 'Failed to update task';
+      const message = error.response?.data?.error?.message || 'Failed to update';
       toast.error(message);
-    } finally {
-      setSaving(false);
     }
-  };
+  }, [taskId, toast, onUpdated]);
 
-  const handleChecklistToggle = useCallback(
-    async (index) => {
-      if (!task) return;
-      const updatedChecklists = task.checklists.map((item, i) =>
-        i === index ? { ...item, checked: !item.checked } : item
-      );
-      setTask((prev) => ({ ...prev, checklists: updatedChecklists }));
-      try {
-        await taskService.update(taskId, { checklists: updatedChecklists });
-      } catch {
-        setTask((prev) => ({
-          ...prev,
-          checklists: prev.checklists.map((item, i) =>
-            i === index ? { ...item, checked: !item.checked } : item
-          ),
-        }));
-        toast.error('Failed to update checklist');
-      }
-    },
-    [task, taskId, toast]
-  );
+  const handleChecklistToggle = useCallback(async (index) => {
+    if (!task) return;
+    const updated = task.checklists.map((item, i) =>
+      i === index ? { ...item, checked: !item.checked } : item
+    );
+    setTask((prev) => ({ ...prev, checklists: updated }));
+    try {
+      await taskService.update(taskId, { checklists: updated });
+    } catch {
+      setTask((prev) => ({
+        ...prev,
+        checklists: prev.checklists.map((item, i) =>
+          i === index ? { ...item, checked: !item.checked } : item
+        ),
+      }));
+      toast.error('Failed to update checklist');
+    }
+  }, [task, taskId, toast]);
+
+  const addChecklistItem = useCallback(async () => {
+    if (!newChecklistItem.trim() || !task) return;
+    const updated = [...(task.checklists || []), { text: newChecklistItem.trim(), checked: false }];
+    setTask((prev) => ({ ...prev, checklists: updated }));
+    setNewChecklistItem('');
+    try {
+      await taskService.update(taskId, { checklists: updated });
+    } catch {
+      toast.error('Failed to add checklist item');
+      fetchData();
+    }
+  }, [newChecklistItem, task, taskId, toast, fetchData]);
+
+  const removeChecklistItem = useCallback(async (index) => {
+    if (!task) return;
+    const updated = task.checklists.filter((_, i) => i !== index);
+    setTask((prev) => ({ ...prev, checklists: updated }));
+    try {
+      await taskService.update(taskId, { checklists: updated });
+    } catch {
+      toast.error('Failed to remove checklist item');
+      fetchData();
+    }
+  }, [task, taskId, toast, fetchData]);
 
   const handleTransition = useCallback(async () => {
     if (!selectedStage || selectedStage === task?.stage) return;
@@ -334,562 +370,494 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
     }
   }, [taskId, toast]);
 
+  const toggleAssignee = useCallback(async (memberId) => {
+    if (!task) return;
+    const currentIds = task.assignees?.map((a) => a._id) || [];
+    const newIds = currentIds.includes(memberId)
+      ? currentIds.filter((id) => id !== memberId)
+      : [...currentIds, memberId];
+    try {
+      await taskService.update(taskId, { assignees: newIds });
+      fetchData();
+      onUpdated?.();
+    } catch (error) {
+      const message = error.response?.data?.error?.message || 'Failed to update assignees';
+      toast.error(message);
+    }
+  }, [task, taskId, fetchData, toast, onUpdated]);
+
   if (!isOpen) return null;
 
   const checkedCount = task?.checklists?.filter((c) => c.checked).length || 0;
   const totalChecklist = task?.checklists?.length || 0;
   const checklistPercentage = totalChecklist > 0 ? Math.round((checkedCount / totalChecklist) * 100) : 0;
 
-  // ─── Edit Mode Render ──────────────────────────────
-  const renderEditMode = () => (
-    <>
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 px-6 py-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
-            <span className="text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-full">Editing</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={cancelEditing} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-              <CloseIcon />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Form Body */}
-      <div className="px-6 py-5 space-y-5 flex-1 overflow-y-auto">
-        {/* Title */}
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Title <span className="text-red-400">*</span></label>
-          <Input value={editForm.title} onChange={handleEditChange('title')} placeholder="Task title" />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Description</label>
-          <textarea
-            className="input-base min-h-[80px] resize-none"
-            value={editForm.description}
-            onChange={handleEditChange('description')}
-            placeholder="Task description"
-          />
-        </div>
-
-        {/* Type + Priority */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Type</label>
-            <Select value={editForm.type} onChange={handleEditChange('type')} options={typeOptions} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Priority</label>
-            <Select value={editForm.priority} onChange={handleEditChange('priority')} options={priorityOptions} />
-          </div>
-        </div>
-
-        {/* Due Date & Time — managers only */}
-        {canManage && (
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Due Date & Time</label>
-            <input
-              type="datetime-local"
-              value={editForm.dueDate}
-              onChange={handleEditChange('dueDate')}
-              className="input-base"
-            />
-          </div>
-        )}
-
-        {/* Progress */}
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-            Progress <span className="text-slate-400 font-normal">({editForm.progress}%)</span>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            value={editForm.progress}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, progress: Number(e.target.value) }))}
-            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-          />
-        </div>
-
-        {/* Blocked */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={editForm.isBlocked}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, isBlocked: e.target.checked, isOnHold: e.target.checked ? false : prev.isOnHold }))}
-              className="rounded border-slate-300 dark:border-slate-600 text-danger-600 focus:ring-danger-500"
-            />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Blocked</span>
-          </label>
-          {editForm.isBlocked && (
-            <Input
-              value={editForm.blockedReason}
-              onChange={handleEditChange('blockedReason')}
-              placeholder="Reason for blocking..."
-            />
-          )}
-        </div>
-
-        {/* On Hold */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={editForm.isOnHold}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, isOnHold: e.target.checked, isBlocked: e.target.checked ? false : prev.isBlocked }))}
-              className="rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500"
-            />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">On Hold</span>
-          </label>
-          {editForm.isOnHold && (
-            <Input
-              value={editForm.onHoldReason}
-              onChange={handleEditChange('onHoldReason')}
-              placeholder="Reason for putting on hold..."
-            />
-          )}
-        </div>
-
-        {/* Assignees — managers only */}
-        {canManage && (
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-              Assignees
-              {editForm.assignees?.length > 0 && (
-                <span className="ml-1.5 text-primary-600 dark:text-primary-400">{editForm.assignees.length} selected</span>
-              )}
-            </label>
-            <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-y-auto max-h-[180px] p-2 space-y-0.5">
-              {teamMembers.length === 0 ? (
-                <p className="text-sm text-slate-400 py-2 text-center">Loading team...</p>
-              ) : (
-                teamMembers.map((member) => (
-                  <label
-                    key={member._id}
-                    className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
-                      editForm.assignees.includes(member._id) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={editForm.assignees.includes(member._id)}
-                      onChange={() => toggleEditAssignee(member._id)}
-                      className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
-                    />
-                    <Avatar name={member.name} src={member.avatar} size="sm" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{member.name}</p>
-                      <p className="text-xs text-slate-400 truncate">{member.projectRole}</p>
-                    </div>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Checklist Editor */}
-        <div>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-            Checklist
-            {editForm.checklists?.length > 0 && (
-              <span className="text-slate-400 font-normal ml-1">({editForm.checklists.length} items)</span>
-            )}
-          </label>
-          <div className="space-y-1.5">
-            {editForm.checklists?.map((item, index) => (
-              <div key={item._id || index} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  onChange={() =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      checklists: prev.checklists.map((c, i) => (i === index ? { ...c, checked: !c.checked } : c)),
-                    }))
-                  }
-                  className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500 shrink-0"
-                />
-                <input
-                  type="text"
-                  value={item.text}
-                  onChange={(e) => handleChecklistItemChange(index, e.target.value)}
-                  className="flex-1 text-sm bg-transparent border-b border-slate-200 dark:border-slate-700 focus:border-primary-500 outline-none py-1 text-slate-700 dark:text-slate-300"
-                />
-                <button
-                  onClick={() => removeChecklistItem(index)}
-                  className="p-1 text-slate-300 hover:text-danger-500 transition-colors shrink-0"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mt-2">
-            <input
-              type="text"
-              value={newChecklistItem}
-              onChange={(e) => setNewChecklistItem(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addChecklistItem()}
-              placeholder="Add checklist item..."
-              className="flex-1 text-sm bg-transparent border-b border-dashed border-slate-200 dark:border-slate-700 focus:border-primary-500 outline-none py-1 text-slate-700 dark:text-slate-300 placeholder:text-slate-300"
-            />
-            <button
-              onClick={addChecklistItem}
-              disabled={!newChecklistItem.trim()}
-              className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:text-slate-300 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Footer */}
-      <div className="sticky bottom-0 px-6 py-4 border-t bg-white dark:bg-slate-900">
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={cancelEditing}>Cancel</Button>
-          <Button size="sm" loading={saving} onClick={saveEdits}>Save Changes</Button>
-        </div>
-      </div>
-    </>
-  );
-
-  // ─── View Mode Render ──────────────────────────────
-  const renderViewMode = () => (
-    <>
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 px-6 py-4 border-b">
-        <div className="flex items-start justify-between">
-          <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
-          <div className="flex items-center gap-1">
-            {canEdit && (
-              <button
-                onClick={startEditing}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                title="Edit task"
-              >
-                <EditIcon />
-              </button>
-            )}
-            {canManage && (
-              <>
-                {!confirmDelete ? (
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 dark:hover:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"
-                    title="Delete task"
-                  >
-                    <TrashIcon />
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-1 bg-danger-50 dark:bg-danger-900/20 rounded-lg px-2 py-1">
-                    <span className="text-xs text-danger-600 dark:text-danger-400 font-medium">Delete?</span>
-                    <button
-                      onClick={handleDeleteTask}
-                      disabled={deleting}
-                      className="text-xs font-semibold text-danger-600 hover:text-danger-700 dark:text-danger-400 disabled:opacity-50 px-1"
-                    >
-                      {deleting ? '...' : 'Yes'}
-                    </button>
-                    <button
-                      onClick={() => setConfirmDelete(false)}
-                      className="text-xs font-medium text-slate-500 hover:text-slate-700 px-1"
-                    >
-                      No
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <CloseIcon />
-            </button>
-          </div>
-        </div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mt-1">{task.title}</h2>
-      </div>
-
-      {/* Meta row */}
-      <div className="px-6 py-3 border-b bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2 flex-wrap">
-        <Badge color={TASK_PRIORITY_COLORS[task.priority]} size="sm">
-          {TASK_PRIORITIES[task.priority] || task.priority}
-        </Badge>
-        <Badge color={TASK_STAGE_COLORS[task.stage]} size="sm" dot>
-          {TASK_STAGES[task.stage] || task.stage}
-        </Badge>
-        <Badge color="default" size="sm">
-          {TASK_TYPES[task.type] || task.type}
-        </Badge>
-      </div>
-
-      {/* Body */}
-      <div className="px-6 py-5 space-y-6 flex-1">
-        {/* Description */}
-        <div>
-          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Description</h3>
-          {task.description ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{task.description}</p>
-          ) : (
-            <p className="text-sm text-slate-400 italic">No description</p>
-          )}
-        </div>
-
-        {/* Details grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Due Date</dt>
-            <dd className="text-sm text-slate-900 dark:text-slate-100">{formatDateTime(task.dueDate) || 'Not set'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Progress</dt>
-            <dd className="text-sm text-slate-900 dark:text-slate-100">{task.progress ?? 0}%</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Created</dt>
-            <dd className="text-sm text-slate-900 dark:text-slate-100">{formatDate(task.createdAt)}</dd>
-          </div>
-        </div>
-
-        {/* Assignees */}
-        <div>
-          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Assignees</h3>
-          {task.assignees?.length > 0 ? (
-            <div className="space-y-2">
-              {task.assignees.map((assignee) => (
-                <div key={assignee._id} className="flex items-center gap-3">
-                  <Avatar name={assignee.name} src={assignee.avatar} size="sm" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{assignee.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{assignee.email}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400">No assignees</p>
-          )}
-        </div>
-
-        {/* Checklist */}
-        {task.checklists?.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
-              Checklist{' '}
-              <span className="text-slate-400 font-normal">
-                ({checkedCount}/{totalChecklist})
-              </span>
-            </h3>
-            <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mb-3">
-              <div
-                className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${checklistPercentage}%` }}
-              />
-            </div>
-            <ul className="space-y-1.5">
-              {task.checklists.map((item, index) => (
-                <li key={item._id || index} className="flex items-center gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={item.checked}
-                    onChange={() => handleChecklistToggle(index)}
-                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                  />
-                  <span
-                    className={`text-sm ${
-                      item.checked ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {item.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Subtasks */}
-        <div>
-          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
-            Subtasks{' '}
-            {subtasks.length > 0 && (
-              <span className="text-slate-400 font-normal">({subtasks.length})</span>
-            )}
-          </h3>
-          {subtasks.length > 0 ? (
-            <div className="space-y-2">
-              {subtasks.map((sub) => (
-                <div
-                  key={sub._id}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"
-                >
-                  <div className="min-w-0">
-                    <span className="font-mono text-xs text-slate-400 mr-2">{sub.taskId}</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{sub.title}</span>
-                  </div>
-                  <Badge color={TASK_STAGE_COLORS[sub.stage]} size="sm">
-                    {TASK_STAGES[sub.stage] || sub.stage}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400">No subtasks</p>
-          )}
-        </div>
-
-        {/* Time Logged */}
-        {(task.estimatedHours > 0 || task.actualHours > 0) && (
-          <div>
-            <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Time Logged</h3>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-sm text-slate-600 dark:text-slate-400">
-                {task.actualHours || 0}h / {task.estimatedHours || 0}h estimated
-              </span>
-            </div>
-            {task.estimatedHours > 0 && (
-              <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    (task.actualHours || 0) > task.estimatedHours ? 'bg-danger-500' : 'bg-primary-500'
-                  }`}
-                  style={{ width: `${Math.min(((task.actualHours || 0) / task.estimatedHours) * 100, 100)}%` }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Linked Bugs */}
-        {linkedBugs.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
-              Linked Bugs{' '}
-              <span className="text-slate-400 font-normal">({linkedBugs.length})</span>
-            </h3>
-            <div className="space-y-2">
-              {linkedBugs.map((bug) => (
-                <div
-                  key={bug._id}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="font-mono text-xs text-slate-400 mr-2">{bug.bugId}</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{bug.title}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <Badge color={BUG_SEVERITY_COLORS[bug.severity]} size="sm">
-                      {BUG_SEVERITIES[bug.severity]}
-                    </Badge>
-                    <Badge color={BUG_STATUS_COLORS[bug.status]} size="sm">
-                      {BUG_STATUSES[bug.status]}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Attachments */}
-        <div>
-          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
-            Attachments{' '}
-            {task.attachments?.length > 0 && (
-              <span className="text-slate-400 font-normal">({task.attachments.length})</span>
-            )}
-          </h3>
-          <FileList files={task.attachments || []} onDelete={canEdit ? handleDeleteAttachment : undefined} />
-          {canEdit && (
-            <div className="mt-3">
-              <FileUpload onUpload={handleUpload} loading={uploading} />
-            </div>
-          )}
-        </div>
-
-        {/* Blocked indicator */}
-        {task.isBlocked && (
-          <div className="bg-danger-50 border border-danger-200 rounded-xl p-3">
-            <h4 className="text-sm font-semibold text-danger-700 mb-1">Blocked</h4>
-            {task.blockedReason && (
-              <p className="text-sm text-danger-600">{task.blockedReason}</p>
-            )}
-          </div>
-        )}
-
-        {/* On Hold indicator */}
-        {task.isOnHold && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <h4 className="text-sm font-semibold text-amber-700 mb-1">On Hold</h4>
-            {task.onHoldReason && (
-              <p className="text-sm text-amber-600">{task.onHoldReason}</p>
-            )}
-          </div>
-        )}
-
-        {/* Comments */}
-        <CommentSection commentableType="Task" commentableId={taskId} />
-      </div>
-
-      {/* Footer - Stage transition */}
-      <div className="sticky bottom-0 px-6 py-4 border-t bg-white dark:bg-slate-900">
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Move to stage</label>
-            <select
-              value={selectedStage}
-              onChange={(e) => setSelectedStage(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
-            >
-              {Object.entries(TASK_STAGES).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            loading={transitioning}
-            disabled={!selectedStage || selectedStage === task.stage}
-            onClick={handleTransition}
-          >
-            Move
-          </Button>
-        </div>
-      </div>
-    </>
-  );
-
-  if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/20" onClick={editing ? undefined : onClose} />
+      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} />
 
       {/* Panel */}
       <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white dark:bg-slate-900 shadow-xl animate-slide-in-right overflow-y-auto flex flex-col">
         {loading || !task ? (
           <LoadingSkeleton />
-        ) : editing ? (
-          renderEditMode()
         ) : (
-          renderViewMode()
+          <>
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 px-6 py-4 border-b">
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
+                <div className="flex items-center gap-1">
+                  {canManage && (
+                    <>
+                      {!confirmDelete ? (
+                        <button
+                          onClick={() => setConfirmDelete(true)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 dark:hover:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"
+                          title="Delete task"
+                        >
+                          <TrashIcon />
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 bg-danger-50 dark:bg-danger-900/20 rounded-lg px-2 py-1">
+                          <span className="text-xs text-danger-600 dark:text-danger-400 font-medium">Delete?</span>
+                          <button
+                            onClick={handleDeleteTask}
+                            disabled={deleting}
+                            className="text-xs font-semibold text-danger-600 hover:text-danger-700 dark:text-danger-400 disabled:opacity-50 px-1"
+                          >
+                            {deleting ? '...' : 'Yes'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(false)}
+                            className="text-xs font-medium text-slate-500 hover:text-slate-700 px-1"
+                          >
+                            No
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+              </div>
+              {/* Inline-editable title */}
+              <div className="mt-1">
+                <InlineField
+                  value={task.title}
+                  canEdit={canEdit}
+                  onSave={(v) => saveField({ title: v.trim() })}
+                  placeholder="Task title"
+                  className="text-lg font-semibold text-slate-900 dark:text-slate-100"
+                />
+              </div>
+            </div>
+
+            {/* Meta row — click to change */}
+            <div className="px-6 py-3 border-b bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2 flex-wrap">
+              <InlineSelect
+                value={task.priority}
+                options={priorityOptions}
+                display={TASK_PRIORITIES[task.priority] || task.priority}
+                badge
+                badgeColor={TASK_PRIORITY_COLORS[task.priority]}
+                canEdit={canEdit}
+                onSave={(v) => saveField({ priority: v })}
+              />
+              <Badge color={TASK_STAGE_COLORS[task.stage]} size="sm" dot>
+                {TASK_STAGES[task.stage] || task.stage}
+              </Badge>
+              <InlineSelect
+                value={task.type}
+                options={typeOptions}
+                display={TASK_TYPES[task.type] || task.type}
+                badge
+                badgeColor="default"
+                canEdit={canEdit}
+                onSave={(v) => saveField({ type: v })}
+              />
+            </div>
+
+            {/* Blocked / On Hold banners */}
+            {task.isBlocked && (
+              <div className="mx-6 mt-4 bg-danger-50 border border-danger-200 rounded-xl p-3 flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-danger-700 mb-0.5">Blocked</h4>
+                  <InlineField
+                    value={task.blockedReason}
+                    canEdit={canEdit}
+                    onSave={(v) => saveField({ blockedReason: v })}
+                    placeholder="Add reason..."
+                    className="text-sm text-danger-600"
+                  />
+                </div>
+                {canEdit && (
+                  <button
+                    onClick={() => saveField({ isBlocked: false, blockedReason: '' })}
+                    className="text-xs font-medium text-danger-500 hover:text-danger-700 shrink-0 mt-0.5"
+                  >
+                    Unblock
+                  </button>
+                )}
+              </div>
+            )}
+            {task.isOnHold && (
+              <div className="mx-6 mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-amber-700 mb-0.5">On Hold</h4>
+                  <InlineField
+                    value={task.onHoldReason}
+                    canEdit={canEdit}
+                    onSave={(v) => saveField({ onHoldReason: v })}
+                    placeholder="Add reason..."
+                    className="text-sm text-amber-600"
+                  />
+                </div>
+                {canEdit && (
+                  <button
+                    onClick={() => saveField({ isOnHold: false, onHoldReason: '' })}
+                    className="text-xs font-medium text-amber-500 hover:text-amber-700 shrink-0 mt-0.5"
+                  >
+                    Resume
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Quick actions — set blocked / on hold */}
+            {canEdit && !task.isBlocked && !task.isOnHold && (
+              <div className="mx-6 mt-4 flex gap-2">
+                <button
+                  onClick={() => saveField({ isBlocked: true, isOnHold: false })}
+                  className="text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/30 px-2.5 py-1 rounded-lg transition-colors"
+                >
+                  Mark Blocked
+                </button>
+                <button
+                  onClick={() => saveField({ isOnHold: true, isBlocked: false })}
+                  className="text-xs font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 px-2.5 py-1 rounded-lg transition-colors"
+                >
+                  Put On Hold
+                </button>
+              </div>
+            )}
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-6 flex-1">
+              {/* Description */}
+              <div>
+                <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Description</h3>
+                <InlineField
+                  value={task.description}
+                  canEdit={canEdit}
+                  multiline
+                  onSave={(v) => saveField({ description: v.trim() })}
+                  placeholder="Add a description..."
+                />
+              </div>
+
+              {/* Details grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Due Date</dt>
+                  <dd>
+                    {canManage ? (
+                      <input
+                        type="datetime-local"
+                        value={toDatetimeLocal(task.dueDate)}
+                        onChange={(e) => {
+                          const val = e.target.value ? new Date(e.target.value).toISOString() : null;
+                          saveField({ dueDate: val });
+                        }}
+                        className="text-sm bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-primary-500 outline-none py-0.5 text-slate-900 dark:text-slate-100 cursor-pointer w-full"
+                      />
+                    ) : (
+                      <span className="text-sm text-slate-900 dark:text-slate-100">{formatDateTime(task.dueDate) || 'Not set'}</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Progress</dt>
+                  <dd className="flex items-center gap-2">
+                    {canEdit ? (
+                      <>
+                        <input
+                          type="range"
+                          min="0" max="100" step="5"
+                          value={task.progress ?? 0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setTask((prev) => ({ ...prev, progress: val }));
+                          }}
+                          onMouseUp={(e) => saveField({ progress: Number(e.target.value) })}
+                          onTouchEnd={(e) => saveField({ progress: Number(e.target.value) })}
+                          className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                        />
+                        <span className="text-xs text-slate-500 w-8 text-right">{task.progress ?? 0}%</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-slate-900 dark:text-slate-100">{task.progress ?? 0}%</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Created</dt>
+                  <dd className="text-sm text-slate-900 dark:text-slate-100">{formatDate(task.createdAt)}</dd>
+                </div>
+              </div>
+
+              {/* Assignees */}
+              <div>
+                <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                  Assignees
+                  {canManage && (
+                    <button
+                      onClick={() => { setShowAssigneePicker((v) => !v); ensureTeamLoaded(); }}
+                      className="ml-2 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                    >
+                      {showAssigneePicker ? 'Done' : 'Edit'}
+                    </button>
+                  )}
+                </h3>
+                {task.assignees?.length > 0 ? (
+                  <div className="space-y-2">
+                    {task.assignees.map((assignee) => (
+                      <div key={assignee._id} className="flex items-center gap-3">
+                        <Avatar name={assignee.name} src={assignee.avatar} size="sm" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{assignee.name}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{assignee.email}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">{canManage ? 'Click Edit to assign members' : 'No assignees'}</p>
+                )}
+                {showAssigneePicker && (
+                  <div className="mt-3 border border-slate-200 dark:border-slate-600 rounded-xl overflow-y-auto max-h-[180px] p-2 space-y-0.5">
+                    {teamMembers.length === 0 ? (
+                      <p className="text-sm text-slate-400 py-2 text-center">Loading team...</p>
+                    ) : (
+                      teamMembers.map((member) => {
+                        const isSelected = task.assignees?.some((a) => a._id === member._id);
+                        return (
+                          <label
+                            key={member._id}
+                            className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
+                              isSelected ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleAssignee(member._id)}
+                              className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                            />
+                            <Avatar name={member.name} src={member.avatar} size="sm" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{member.name}</p>
+                              <p className="text-xs text-slate-400 truncate">{member.projectRole}</p>
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Checklist */}
+              <div>
+                <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                  Checklist{' '}
+                  {totalChecklist > 0 && (
+                    <span className="text-slate-400 font-normal">({checkedCount}/{totalChecklist})</span>
+                  )}
+                </h3>
+                {totalChecklist > 0 && (
+                  <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mb-3">
+                    <div
+                      className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${checklistPercentage}%` }}
+                    />
+                  </div>
+                )}
+                <ul className="space-y-1.5">
+                  {task.checklists?.map((item, index) => (
+                    <li key={item._id || index} className="flex items-center gap-2.5 group">
+                      <input
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={() => handleChecklistToggle(index)}
+                        className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                      />
+                      <span className={`text-sm flex-1 ${item.checked ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {item.text}
+                      </span>
+                      {canEdit && (
+                        <button
+                          onClick={() => removeChecklistItem(index)}
+                          className="p-1 text-slate-300 hover:text-danger-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {canEdit && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="text"
+                      value={newChecklistItem}
+                      onChange={(e) => setNewChecklistItem(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addChecklistItem()}
+                      placeholder="Add checklist item..."
+                      className="flex-1 text-sm bg-transparent border-b border-dashed border-slate-200 dark:border-slate-700 focus:border-primary-500 outline-none py-1 text-slate-700 dark:text-slate-300 placeholder:text-slate-300"
+                    />
+                    <button
+                      onClick={addChecklistItem}
+                      disabled={!newChecklistItem.trim()}
+                      className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:text-slate-300 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Subtasks */}
+              <div>
+                <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                  Subtasks{' '}
+                  {subtasks.length > 0 && (
+                    <span className="text-slate-400 font-normal">({subtasks.length})</span>
+                  )}
+                </h3>
+                {subtasks.length > 0 ? (
+                  <div className="space-y-2">
+                    {subtasks.map((sub) => (
+                      <div key={sub._id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                        <div className="min-w-0">
+                          <span className="font-mono text-xs text-slate-400 mr-2">{sub.taskId}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{sub.title}</span>
+                        </div>
+                        <Badge color={TASK_STAGE_COLORS[sub.stage]} size="sm">
+                          {TASK_STAGES[sub.stage] || sub.stage}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">No subtasks</p>
+                )}
+              </div>
+
+              {/* Time Logged */}
+              {(task.estimatedHours > 0 || task.actualHours > 0) && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Time Logged</h3>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {task.actualHours || 0}h / {task.estimatedHours || 0}h estimated
+                    </span>
+                  </div>
+                  {task.estimatedHours > 0 && (
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          (task.actualHours || 0) > task.estimatedHours ? 'bg-danger-500' : 'bg-primary-500'
+                        }`}
+                        style={{ width: `${Math.min(((task.actualHours || 0) / task.estimatedHours) * 100, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Linked Bugs */}
+              {linkedBugs.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                    Linked Bugs{' '}
+                    <span className="text-slate-400 font-normal">({linkedBugs.length})</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {linkedBugs.map((bug) => (
+                      <div key={bug._id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                        <div className="min-w-0 flex-1">
+                          <span className="font-mono text-xs text-slate-400 mr-2">{bug.bugId}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{bug.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <Badge color={BUG_SEVERITY_COLORS[bug.severity]} size="sm">
+                            {BUG_SEVERITIES[bug.severity]}
+                          </Badge>
+                          <Badge color={BUG_STATUS_COLORS[bug.status]} size="sm">
+                            {BUG_STATUSES[bug.status]}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              <div>
+                <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                  Attachments{' '}
+                  {task.attachments?.length > 0 && (
+                    <span className="text-slate-400 font-normal">({task.attachments.length})</span>
+                  )}
+                </h3>
+                <FileList files={task.attachments || []} onDelete={canEdit ? handleDeleteAttachment : undefined} />
+                {canEdit && (
+                  <div className="mt-3">
+                    <FileUpload onUpload={handleUpload} loading={uploading} />
+                  </div>
+                )}
+              </div>
+
+              {/* Comments */}
+              <CommentSection commentableType="Task" commentableId={taskId} />
+            </div>
+
+            {/* Footer - Stage transition */}
+            <div className="sticky bottom-0 px-6 py-4 border-t bg-white dark:bg-slate-900">
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Move to stage</label>
+                  <select
+                    value={selectedStage}
+                    onChange={(e) => setSelectedStage(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                  >
+                    {Object.entries(TASK_STAGES).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={transitioning}
+                  disabled={!selectedStage || selectedStage === task.stage}
+                  onClick={handleTransition}
+                >
+                  Move
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
