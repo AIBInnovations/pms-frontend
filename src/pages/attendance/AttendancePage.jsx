@@ -91,11 +91,7 @@ export default function AttendancePage() {
       const res = await attendanceService.checkIn({});
       setToday(res.data);
 
-      if (res.warnings?.length > 0) {
-        toast.error(res.warnings.join(' '));
-      } else {
-        toast.success(res.message || 'Checked in!');
-      }
+      toast.success(res.message || 'Checked in!');
 
       fetchSummary();
       if (isAdmin) fetchTodayAll();
@@ -164,9 +160,6 @@ export default function AttendancePage() {
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDuration(today.checkIn, today.checkOut)}</p>
                     </div>
                   )}
-                  {today.isSuspicious && (
-                    <Badge color="warning" size="sm">Suspicious</Badge>
-                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-400">Not checked in yet</p>
@@ -219,7 +212,7 @@ export default function AttendancePage() {
           </div>
         ) : summary ? (
           <>
-            <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className={`grid gap-4 mb-5 ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <div className="text-center p-4 rounded-xl bg-primary-50 dark:bg-primary-900/20">
                 <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{summary.presentDays}</p>
                 <p className="text-xs text-slate-500 mt-1">Days Present</p>
@@ -228,10 +221,12 @@ export default function AttendancePage() {
                 <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{summary.totalHours}h</p>
                 <p className="text-xs text-slate-500 mt-1">Total Hours</p>
               </div>
-              <div className="text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20">
-                <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{summary.suspiciousDays}</p>
-                <p className="text-xs text-slate-500 mt-1">Suspicious</p>
-              </div>
+              {isAdmin && (
+                <div className="text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20">
+                  <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{summary.suspiciousDays}</p>
+                  <p className="text-xs text-slate-500 mt-1">Suspicious</p>
+                </div>
+              )}
             </div>
 
             {/* Daily records table */}
@@ -244,8 +239,8 @@ export default function AttendancePage() {
                       <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Check In</th>
                       <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Check Out</th>
                       <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Duration</th>
-                      <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">IP</th>
-                      <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Status</th>
+                      {isAdmin && <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">IP</th>}
+                      {isAdmin && <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Status</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -257,13 +252,16 @@ export default function AttendancePage() {
                         <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{formatTime(r.checkIn)}</td>
                         <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{formatTime(r.checkOut)}</td>
                         <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{formatDuration(r.checkIn, r.checkOut)}</td>
-                        <td className="px-3 py-2.5 text-xs font-mono text-slate-400">{r.ip}</td>
-                        <td className="px-3 py-2.5">
-                          {r.isSuspicious ? (
-                            <Badge color="warning" size="sm" title={r.suspiciousReason}>Suspicious</Badge>
-                          ) : (
-                            <Badge color="success" size="sm">Normal</Badge>
-                          )}
+                        {isAdmin && <td className="px-3 py-2.5 text-xs font-mono text-slate-400">{r.ip}</td>}
+                        {isAdmin && (
+                          <td className="px-3 py-2.5">
+                            {r.isSuspicious ? (
+                              <Badge color="warning" size="sm" title={r.suspiciousReason}>Suspicious</Badge>
+                            ) : (
+                              <Badge color="success" size="sm">Normal</Badge>
+                            )}
+                          </td>
+                        )}
                         </td>
                       </tr>
                     ))}
