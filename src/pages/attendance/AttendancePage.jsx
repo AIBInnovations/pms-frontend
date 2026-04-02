@@ -42,6 +42,9 @@ export default function AttendancePage() {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [todayAll, setTodayAll] = useState([]);
   const [loadingAll, setLoadingAll] = useState(false);
+  const [allUsersSummary, setAllUsersSummary] = useState([]);
+  const [loadingAllUsers, setLoadingAllUsers] = useState(false);
+  const [adminMonth, setAdminMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   const fetchToday = useCallback(async () => {
     setLoadingToday(true);
@@ -81,9 +84,23 @@ export default function AttendancePage() {
     }
   }, [isAdmin]);
 
+  const fetchAllUsersSummary = useCallback(async () => {
+    if (!isAdmin) return;
+    setLoadingAllUsers(true);
+    try {
+      const res = await attendanceService.getAllUsersSummary({ month: adminMonth });
+      setAllUsersSummary(res.data || []);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingAllUsers(false);
+    }
+  }, [isAdmin, adminMonth]);
+
   useEffect(() => { fetchToday(); }, [fetchToday]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
   useEffect(() => { fetchTodayAll(); }, [fetchTodayAll]);
+  useEffect(() => { fetchAllUsersSummary(); }, [fetchAllUsersSummary]);
 
   const handleCheckIn = async () => {
     setChecking(true);
@@ -273,6 +290,80 @@ export default function AttendancePage() {
           <p className="text-sm text-slate-400 text-center py-6">No attendance records for this month</p>
         )}
       </div>
+
+      {/* Admin: All Users Monthly Analytics */}
+      {isAdmin && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Team Attendance Analytics</h2>
+            <select
+              value={adminMonth}
+              onChange={(e) => setAdminMonth(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+            >
+              {monthOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {loadingAllUsers ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => <Skeleton key={i} variant="text" className="h-14" />)}
+            </div>
+          ) : allUsersSummary.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-4">No attendance data for this month</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-700">
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Member</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Days Present</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Total Hours</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Avg Hours/Day</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Suspicious</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {allUsersSummary.map((s) => (
+                    <tr key={s.user?._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={s.user?.name} src={s.user?.avatar} size="sm" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{s.user?.name}</p>
+                            <p className="text-xs text-slate-400 truncate">{s.user?.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{s.presentDays}</span>
+                        <span className="text-xs text-slate-400 ml-1">days</span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{s.totalHours}</span>
+                        <span className="text-xs text-slate-400 ml-1">hrs</span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{s.avgHours}</span>
+                        <span className="text-xs text-slate-400 ml-1">hrs</span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {s.suspiciousDays > 0 ? (
+                          <Badge color="warning" size="sm">{s.suspiciousDays}</Badge>
+                        ) : (
+                          <span className="text-xs text-slate-400">0</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Admin: Today's attendance overview */}
       {isAdmin && (

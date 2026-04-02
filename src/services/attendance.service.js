@@ -25,6 +25,10 @@ const attendanceService = {
     const res = await api.get('/attendance/today-all');
     return res.data;
   },
+  async getAllUsersSummary(params = {}) {
+    const res = await api.get('/attendance/all-users-summary', { params });
+    return res.data;
+  },
   async registerIp(userId, ip) {
     const res = await api.post('/attendance/register-ip', { userId, ip });
     return res.data;
