@@ -6,6 +6,7 @@ import CommandPalette from '../components/CommandPalette';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 import { useAuth } from '../context/AuthContext';
 import { attendanceService } from '../services';
+import useWaterReminder from '../hooks/useWaterReminder';
 
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -53,6 +54,7 @@ export default function AppLayout() {
   useKeyboardShortcuts(shortcuts);
 
   const handleMobileToggle = useCallback(() => setMobileOpen(prev => !prev), []);
+  const { showReminder, dismissReminder, testSound } = useWaterReminder();
 
   return (
     <div className="h-screen p-3 max-md:p-0">
@@ -78,7 +80,7 @@ export default function AppLayout() {
         )}
 
         <div className="flex-1 flex flex-col min-w-0 bg-[#f8f9fb] dark:bg-slate-950">
-          <Topbar onMobileMenuToggle={handleMobileToggle} />
+          <Topbar onMobileMenuToggle={handleMobileToggle} onTestWaterSound={user?.role === 'super_admin' ? testSound : null} />
           {showCheckInPrompt && (
             <div className="mx-6 mt-4 max-md:mx-3 max-md:mt-2 flex items-center gap-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl px-4 py-3">
               <svg className="w-5 h-5 text-primary-600 dark:text-primary-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -99,6 +101,17 @@ export default function AppLayout() {
                 Go to Attendance
               </button>
               <button onClick={dismissPrompt} className="text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors p-1">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {showReminder && (
+            <div className="mx-6 mt-3 max-md:mx-3 flex items-center gap-3 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-xl px-4 py-3 animate-fade-in">
+              <span className="text-lg shrink-0">💧</span>
+              <p className="text-sm text-cyan-800 dark:text-cyan-300 flex-1 font-medium">Time to drink water! Stay hydrated.</p>
+              <button onClick={dismissReminder} className="text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors p-1">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
