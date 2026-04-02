@@ -58,6 +58,23 @@ export default function UsersPage() {
     }
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (userId) => {
+    setDeleting(true);
+    try {
+      await userService.delete(userId);
+      toast.success('User deleted');
+      setConfirmDeleteId(null);
+      fetchUsers();
+    } catch {
+      toast.error('Failed to delete user');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const roleBadgeColor = (role) => {
     const map = { super_admin: 'danger', project_manager: 'primary', developer: 'default' };
     return map[role] || 'default';
@@ -186,6 +203,34 @@ export default function UsersPage() {
                         >
                           {u.status === 'active' ? 'Deactivate' : 'Activate'}
                         </Button>
+                        {confirmDeleteId === u._id ? (
+                          <div className="flex items-center gap-1 bg-danger-50 dark:bg-danger-900/20 rounded-lg px-2 py-1">
+                            <span className="text-xs text-danger-600 dark:text-danger-400 font-medium">Delete?</span>
+                            <button
+                              onClick={() => handleDelete(u._id)}
+                              disabled={deleting}
+                              className="text-xs font-semibold text-danger-600 hover:text-danger-700 dark:text-danger-400 disabled:opacity-50 px-1"
+                            >
+                              {deleting ? '...' : 'Yes'}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-xs font-medium text-slate-500 hover:text-slate-700 px-1"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(u._id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 dark:hover:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"
+                            title="Delete user"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
