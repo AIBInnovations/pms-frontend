@@ -208,6 +208,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   const [teamMembers, setTeamMembers] = useState([]);
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [dirty, setDirty] = useState(false);
 
   const canEdit = ['super_admin', 'project_manager', 'developer'].includes(user?.role);
   const canManage = ['super_admin', 'project_manager'].includes(user?.role);
@@ -243,6 +244,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
       setSelectedStage('');
       setTeamMembers([]);
       setShowAssigneePicker(false);
+      setDirty(false);
     }
   }, [taskId, isOpen, fetchData]);
 
@@ -262,12 +264,18 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
     try {
       await taskService.update(taskId, patch);
       setTask((prev) => ({ ...prev, ...patch }));
+      setDirty(true);
     } catch (error) {
       const message = error.response?.data?.error?.message || 'Failed to update';
       toast.error(message);
       fetchData(); // revert on error
     }
   }, [taskId, toast, fetchData]);
+
+  const handleSyncAndClose = useCallback(() => {
+    if (dirty) onUpdated?.();
+    setDirty(false);
+  }, [dirty, onUpdated]);
 
   const handleChecklistToggle = useCallback(async (index) => {
     if (!task) return;
@@ -395,7 +403,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   return (
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/20" onClick={() => { handleSyncAndClose(); onClose(); }} />
 
       {/* Panel */}
       <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white dark:bg-slate-900 shadow-xl animate-slide-in-right overflow-y-auto flex flex-col">
@@ -406,7 +414,20 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
             {/* Header */}
             <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 px-6 py-4 border-b">
               <div className="flex items-start justify-between">
-                <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-slate-400">{task.taskId}</span>
+                  {dirty && (
+                    <button
+                      onClick={handleSyncAndClose}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 px-2.5 py-1 rounded-lg transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      Apply
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-1">
                   {canManage && (
                     <>
@@ -439,7 +460,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
                     </>
                   )}
                   <button
-                    onClick={onClose}
+                    onClick={() => { handleSyncAndClose(); onClose(); }}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     <CloseIcon />
