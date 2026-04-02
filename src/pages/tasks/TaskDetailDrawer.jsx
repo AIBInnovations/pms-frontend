@@ -257,17 +257,17 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
     } catch { /* ignore */ }
   }, [task, teamMembers.length]);
 
-  // Save a single field
+  // Save a single field — optimistic update only, no parent refetch
   const saveField = useCallback(async (patch) => {
     try {
       await taskService.update(taskId, patch);
       setTask((prev) => ({ ...prev, ...patch }));
-      onUpdated?.();
     } catch (error) {
       const message = error.response?.data?.error?.message || 'Failed to update';
       toast.error(message);
+      fetchData(); // revert on error
     }
-  }, [taskId, toast, onUpdated]);
+  }, [taskId, toast, fetchData]);
 
   const handleChecklistToggle = useCallback(async (index) => {
     if (!task) return;
