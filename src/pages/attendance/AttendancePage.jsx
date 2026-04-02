@@ -262,7 +262,6 @@ export default function AttendancePage() {
                             )}
                           </td>
                         )}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
