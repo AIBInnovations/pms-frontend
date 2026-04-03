@@ -120,7 +120,7 @@ function RevenueTab({ projectId, revenues, setRevenues, toast }) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Revenue</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Total: <span className="font-semibold text-emerald-600">${totalRevenue.toLocaleString()}</span></p>
+          <p className="text-xs text-slate-400 mt-0.5">Total: <span className="font-semibold text-emerald-600">&#8377;{totalRevenue.toLocaleString('en-IN')}</span></p>
         </div>
         <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
@@ -144,7 +144,7 @@ function RevenueTab({ projectId, revenues, setRevenues, toast }) {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Amount ($)</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Amount (&#8377;)</label>
               <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
             </div>
             <div>
@@ -186,7 +186,7 @@ function RevenueTab({ projectId, revenues, setRevenues, toast }) {
                       {getCategoryLabel(rev)}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-emerald-600">${(rev.amount || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-emerald-600">&#8377;{(rev.amount || 0).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 text-sm text-slate-500">{formatDate(rev.date)}</td>
                   <td className="px-4 py-3 text-sm text-slate-500 truncate max-w-[200px]">{rev.notes || '--'}</td>
                   <td className="px-4 py-3 text-right">
@@ -1191,7 +1191,7 @@ export default function ProjectDetailPage() {
                 ['Status', <Badge key="s" color={PROJECT_STATUS_COLORS[project.status]} size="sm" dot>{PROJECT_STATUSES[project.status]}</Badge>],
                 ['Start', formatDate(project.startDate)],
                 ['End', formatDate(project.endDate)],
-                ...(canEdit ? [['Budget', project.budget != null ? `$${project.budget.toLocaleString()}` : '--']] : []),
+                ...(canEdit ? [['Budget', project.budget != null ? `\u20B9${project.budget.toLocaleString('en-IN')}` : '--']] : []),
                 ['Created', formatDate(project.createdAt)],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between">
