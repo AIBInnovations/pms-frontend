@@ -41,12 +41,12 @@ function getResizeHandle(a, px, py) {
   return null;
 }
 
-export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
+export default function ImageAnnotator({ imageUrl, initialAnnotations = [], onSave, onClose, saving }) {
   const canvasRef = useRef(null);
-  const [tool, setTool] = useState('rect');
+  const [tool, setTool] = useState(initialAnnotations.length > 0 ? 'select' : 'rect');
   const [color, setColor] = useState('#ef4444');
   const [strokeWidth, setStrokeWidth] = useState(6);
-  const [annotations, setAnnotations] = useState([]);
+  const [annotations, setAnnotations] = useState(initialAnnotations);
   const [redoStack, setRedoStack] = useState([]);
   const [drawing, setDrawing] = useState(null);
   const [textInput, setTextInput] = useState(null);
@@ -322,14 +322,7 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
 
   const handleSave = () => {
     setSelectedIdx(null);
-    setTimeout(() => {
-      render(null);
-      setTimeout(() => {
-        // Use JPEG at 0.8 quality to stay under Vercel's 4.5MB proxy limit
-        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
-        onSave(dataUrl);
-      }, 50);
-    }, 50);
+    onSave(annotations);
   };
 
   if (!imgLoaded) {
@@ -388,7 +381,7 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
         <div className="flex-1" />
 
         <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-        <Button size="sm" onClick={handleSave} loading={saving} disabled={annotations.length === 0}>Save Annotated</Button>
+        <Button size="sm" onClick={handleSave} loading={saving}>Save</Button>
       </div>
 
       {/* Canvas */}

@@ -381,23 +381,22 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
     }
   }, [taskId, toast]);
 
-  const handleAnnotationSave = useCallback(async (dataUrl) => {
+  const handleAnnotationSave = useCallback(async (annotationsData) => {
     setSavingAnnotation(true);
     try {
       const attachmentId = annotatingFile?._id;
-      const res = await taskService.saveAnnotatedImage(taskId, dataUrl, attachmentId);
-      // Replace the attachment in local state with the updated one
+      const res = await taskService.saveAnnotations(taskId, attachmentId, annotationsData);
       setTask((prev) => ({
         ...prev,
         attachments: prev.attachments.map((a) =>
           a._id === attachmentId ? res.data : a
         ),
       }));
-      toast.success('Image updated');
+      toast.success('Annotations saved');
       setAnnotatingFile(null);
       setDirty(true);
     } catch {
-      toast.error('Failed to save annotated image');
+      toast.error('Failed to save annotations');
     } finally {
       setSavingAnnotation(false);
     }
@@ -912,6 +911,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
     {annotatingFile && (
       <ImageAnnotator
         imageUrl={annotatingFile.url}
+        initialAnnotations={annotatingFile.annotations || []}
         onSave={handleAnnotationSave}
         onClose={() => setAnnotatingFile(null)}
         saving={savingAnnotation}

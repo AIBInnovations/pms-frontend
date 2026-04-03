@@ -71,8 +71,8 @@ const taskService = {
     return data;
   },
 
-  async saveAnnotatedImage(taskId, base64Image, attachmentId) {
-    const { data } = await api.post(`/tasks/${taskId}/annotated-image`, { image: base64Image, attachmentId });
+  async saveAnnotations(taskId, attachmentId, annotations) {
+    const { data } = await api.post(`/tasks/${taskId}/annotations`, { attachmentId, annotations });
     return data;
   },
 };
