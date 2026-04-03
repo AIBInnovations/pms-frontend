@@ -47,6 +47,7 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
   const [color, setColor] = useState('#ef4444');
   const [strokeWidth, setStrokeWidth] = useState(6);
   const [annotations, setAnnotations] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
   const [drawing, setDrawing] = useState(null);
   const [textInput, setTextInput] = useState(null);
   const [editingTextIdx, setEditingTextIdx] = useState(null);
@@ -230,13 +231,12 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
   };
 
   const handlePointerUp = () => {
-    if (dragState) { setDragState(null); return; }
+    if (dragState) { setDragState(null); setRedoStack([]); return; }
     if (!drawing) return;
     if (Math.abs(drawing.w) > 5 || Math.abs(drawing.h) > 5) {
-      setAnnotations((prev) => [...prev, drawing]);
-      // Auto-switch to select after drawing
+      pushAnnotations((prev) => [...prev, drawing]);
       setTool('select');
-      setSelectedIdx(annotations.length); // select newly added
+      setSelectedIdx(annotations.length);
     }
     setDrawing(null);
   };
@@ -245,12 +245,12 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
     if (editingTextIdx !== null) {
       // Editing existing text
       if (text.trim()) {
-        setAnnotations((prev) => prev.map((a, i) => i === editingTextIdx ? { ...a, text: text.trim() } : a));
+        pushAnnotations((prev) => prev.map((a, i) => i === editingTextIdx ? { ...a, text: text.trim() } : a));
       }
       setEditingTextIdx(null);
     } else if (text.trim()) {
       // New text
-      setAnnotations((prev) => [...prev, { type: 'text', x: textInput.x, y: textInput.y, text: text.trim(), color, strokeWidth }]);
+      pushAnnotations((prev) => [...prev, { type: 'text', x: textInput.x, y: textInput.y, text: text.trim(), color, strokeWidth }]);
       setTool('select');
       setSelectedIdx(annotations.length);
     }
@@ -267,6 +267,11 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
     const handleKey = (e) => {
       // Don't capture when text input is open
       if (textInput) return;
+
+      // Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+
       if (e.key === 'v' || e.key === 'V') { setTool('select'); return; }
       if (e.key === 'r' || e.key === 'R') { setTool('rect'); setSelectedIdx(null); return; }
       if (e.key === 'c' || e.key === 'C') { setTool('circle'); setSelectedIdx(null); return; }
@@ -274,23 +279,48 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
       if (selectedIdx === null) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        setAnnotations((prev) => prev.filter((_, i) => i !== selectedIdx));
-        setSelectedIdx(null);
+        deleteSelected();
       }
       if (e.key === 'Escape') setSelectedIdx(null);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [selectedIdx, textInput]);
+  }, [selectedIdx, textInput, undo, redo, deleteSelected]);
 
-  const deleteSelected = () => {
-    if (selectedIdx === null) return;
-    setAnnotations((prev) => prev.filter((_, i) => i !== selectedIdx));
+  const pushAnnotations = useCallback((updater) => {
+    setAnnotations((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      setRedoStack([]); // clear redo on any new change
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    setAnnotations((prev) => {
+      if (prev.length === 0) return prev;
+      setRedoStack((rs) => [...rs, prev[prev.length - 1]]);
+      return prev.slice(0, -1);
+    });
     setSelectedIdx(null);
-  };
+  }, []);
 
-  const undo = () => { setAnnotations((prev) => prev.slice(0, -1)); setSelectedIdx(null); };
-  const clearAll = () => { setAnnotations([]); setSelectedIdx(null); };
+  const redo = useCallback(() => {
+    setRedoStack((rs) => {
+      if (rs.length === 0) return rs;
+      const item = rs[rs.length - 1];
+      setAnnotations((prev) => [...prev, item]);
+      return rs.slice(0, -1);
+    });
+    setSelectedIdx(null);
+  }, []);
+
+  const deleteSelected = useCallback(() => {
+    if (selectedIdx === null) return;
+    pushAnnotations((prev) => prev.filter((_, i) => i !== selectedIdx));
+    setSelectedIdx(null);
+  }, [selectedIdx, pushAnnotations]);
+
+  const clearAll = () => { pushAnnotations([]); setSelectedIdx(null); };
 
   const handleSave = () => {
     setSelectedIdx(null);
@@ -352,7 +382,8 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
         {selectedIdx !== null && (
           <button onClick={deleteSelected} className="text-xs font-medium text-danger-600 hover:text-danger-700 px-2 py-1">Delete</button>
         )}
-        <button onClick={undo} disabled={annotations.length === 0} className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:text-slate-300 px-2 py-1">Undo</button>
+        <button onClick={undo} disabled={annotations.length === 0} title="Undo (Ctrl+Z)" className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:text-slate-300 px-2 py-1">Undo</button>
+        <button onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)" className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:text-slate-300 px-2 py-1">Redo</button>
         <button onClick={clearAll} disabled={annotations.length === 0} className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:text-slate-300 px-2 py-1">Clear</button>
 
         <div className="flex-1" />
