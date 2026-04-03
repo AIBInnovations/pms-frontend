@@ -6,9 +6,7 @@ function playChime() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const now = ctx.currentTime;
-
-    // Pleasant two-tone chime
-    const notes = [659.25, 783.99, 987.77]; // E5, G5, B5
+    const notes = [659.25, 783.99, 987.77];
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -21,23 +19,19 @@ function playChime() {
       osc.start(now + i * 0.15);
       osc.stop(now + i * 0.15 + 0.7);
     });
-
-    // Clean up context after sound finishes
     setTimeout(() => ctx.close(), 2000);
-    return true;
-  } catch {
-    return false;
-  }
+  } catch { /* ignore */ }
 }
 
 export default function useWaterReminder() {
-  const intervalRef = useRef(null);
   const [showReminder, setShowReminder] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(INTERVAL_MS / 1000);
+  const nextRef = useRef(Date.now() + INTERVAL_MS);
 
   const triggerReminder = useCallback(() => {
     playChime();
     setShowReminder(true);
-    // Auto-dismiss after 10 seconds
+    nextRef.current = Date.now() + INTERVAL_MS;
     setTimeout(() => setShowReminder(false), 10000);
   }, []);
 
@@ -49,10 +43,20 @@ export default function useWaterReminder() {
     playChime();
   }, []);
 
+  // Main interval
   useEffect(() => {
-    intervalRef.current = setInterval(triggerReminder, INTERVAL_MS);
-    return () => clearInterval(intervalRef.current);
+    const id = setInterval(triggerReminder, INTERVAL_MS);
+    return () => clearInterval(id);
   }, [triggerReminder]);
 
-  return { showReminder, dismissReminder, testSound, triggerReminder };
+  // Countdown tick every second
+  useEffect(() => {
+    const id = setInterval(() => {
+      const diff = Math.max(0, Math.round((nextRef.current - Date.now()) / 1000));
+      setSecondsLeft(diff);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return { showReminder, dismissReminder, testSound, secondsLeft };
 }

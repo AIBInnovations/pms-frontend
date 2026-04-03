@@ -26,7 +26,7 @@ export default function ProjectsPage() {
   const fetchProjects = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 12 };
+      const params = { page, limit: 100 };
       if (search) params.search = search;
       if (typeFilter) params.type = typeFilter;
       if (statusFilter) params.status = statusFilter;

@@ -6,7 +6,7 @@ import { Avatar } from '../components/ui';
 import GlobalSearch from '../components/GlobalSearch';
 import NotificationBell from '../components/notifications/NotificationBell';
 
-export default function Topbar({ onMobileMenuToggle, onTestWaterSound }) {
+export default function Topbar({ onMobileMenuToggle, onTestWaterSound, waterCountdown }) {
   const { user, logout } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
   const navigate = useNavigate();
@@ -72,6 +72,15 @@ export default function Topbar({ onMobileMenuToggle, onTestWaterSound }) {
             </svg>
           )}
         </button>
+
+        {waterCountdown != null && (
+          <div className="hidden sm:flex items-center gap-1.5 text-slate-400 select-none" title="Next water reminder">
+            <span className="text-[11px]">💧</span>
+            <span className="text-[11px] font-mono tabular-nums">
+              {Math.floor(waterCountdown / 3600)}:{String(Math.floor((waterCountdown % 3600) / 60)).padStart(2, '0')}:{String(waterCountdown % 60).padStart(2, '0')}
+            </span>
+          </div>
+        )}
 
         {onTestWaterSound && (
           <button
