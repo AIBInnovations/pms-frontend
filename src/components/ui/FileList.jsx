@@ -14,15 +14,10 @@ function fileIcon(name) {
   return 'file';
 }
 
-function isImage(name) {
-  const ext = name?.split('.').pop()?.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
-}
-
-// Also detect Cloudinary image URLs without extension
-function isImageUrl(url) {
-  if (!url) return false;
-  if (url.includes('cloudinary.com') && url.includes('/image/')) return true;
+function isImageFile(file) {
+  const ext = file.name?.split('.').pop()?.toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return true;
+  if (file.url?.includes('cloudinary.com') && file.url.includes('/image/')) return true;
   return false;
 }
 
@@ -37,8 +32,8 @@ const iconColors = {
 export default function FileList({ files = [], onDelete, onAnnotate, baseUrl = '' }) {
   if (!files.length) return null;
 
-  const images = files.filter((f) => isImage(f.name) || isImageUrl(f.url));
-  const others = files.filter((f) => !isImage(f.name) && !isImageUrl(f.url));
+  const images = files.filter(isImageFile);
+  const others = files.filter((f) => !isImageFile(f));
 
   return (
     <div className="space-y-3">
@@ -46,30 +41,22 @@ export default function FileList({ files = [], onDelete, onAnnotate, baseUrl = '
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {images.map((file) => (
-            <div key={file._id} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-              <div onClick={() => onAnnotate ? onAnnotate(file) : window.open(`${baseUrl}${file.url}`, '_blank')} className="cursor-pointer">
-                <img
-                  src={`${baseUrl}${file.url}`}
-                  alt={file.name}
-                  className="w-full h-32 object-cover"
-                  loading="lazy"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div
+              key={file._id}
+              className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer"
+              onClick={() => onAnnotate ? onAnnotate(file) : window.open(`${baseUrl}${file.url}`, '_blank')}
+            >
+              <img
+                src={`${baseUrl}${file.url}`}
+                alt={file.name}
+                className="w-full h-32 object-cover"
+                loading="lazy"
+              />
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                <p className="text-[11px] text-white truncate flex-1 mr-2">{file.name}</p>
+                <p className="text-[11px] text-white truncate flex-1 mr-2 pointer-events-none">{file.name}</p>
                 <div className="flex items-center gap-0.5">
-                  {onAnnotate && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onAnnotate(file); }}
-                      className="p-1 rounded-md bg-white/20 hover:bg-white/40 text-white transition-colors"
-                      title="Annotate"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
-                      </svg>
-                    </button>
-                  )}
                   {onDelete && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(file._id); }}
