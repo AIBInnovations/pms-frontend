@@ -325,7 +325,8 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
     setTimeout(() => {
       render(null);
       setTimeout(() => {
-        const dataUrl = canvasRef.current.toDataURL('image/png');
+        // Use JPEG at 0.8 quality to stay under Vercel's 4.5MB proxy limit
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
         onSave(dataUrl);
       }, 50);
     }, 50);
