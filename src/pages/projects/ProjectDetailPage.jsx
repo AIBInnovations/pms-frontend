@@ -5,7 +5,7 @@ import CommentSection from '../../components/comments/CommentSection';
 import KanbanBoard from '../tasks/KanbanBoard';
 import TaskDetailDrawer from '../tasks/TaskDetailDrawer';
 import CreateTaskModal from '../tasks/CreateTaskModal';
-import { projectService, taskService, userService } from '../../services';
+import { projectService, taskService, userService, documentService } from '../../services';
 import useTaskSeen from '../../hooks/useTaskSeen';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, EmptyState, Skeleton, Input, Select } from '../../components/ui';
@@ -29,6 +29,150 @@ function toInputDate(dateStr) {
 // ─── SVG Icons ────────────────────────────────────────
 const BoardIcon = ({ className = 'w-4 h-4' }) => <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" /></svg>;
 const ListIcon = ({ className = 'w-4 h-4' }) => <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>;
+
+// ─── Documents Tab Component ──────────────────────────
+const DOC_CATEGORIES = {
+  requirement: { label: 'Requirement', color: 'primary' },
+  design: { label: 'Design', color: 'success' },
+  technical: { label: 'Technical', color: 'warning' },
+  meeting_notes: { label: 'Meeting Notes', color: 'default' },
+  guide: { label: 'Guide', color: 'primary' },
+  other: { label: 'Other', color: 'default' },
+};
+
+function DocumentsTab({ projectId, navigate }) {
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
+  const toast = useToast();
+
+  const fetchDocs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { project: projectId, limit: 100 };
+      if (search) params.search = search;
+      if (catFilter) params.category = catFilter;
+      const res = await documentService.getAll(params);
+      setDocs(res.data || []);
+    } catch {
+      toast.error('Failed to load documents');
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, search, catFilter, toast]);
+
+  useEffect(() => { fetchDocs(); }, [fetchDocs]);
+
+  const handleDelete = async (id) => {
+    try {
+      await documentService.delete(id);
+      setDocs((prev) => prev.filter((d) => d._id !== id));
+      toast.success('Document deleted');
+      setDeleteId(null);
+    } catch {
+      toast.error('Failed to delete document');
+    }
+  };
+
+  const catOptions = Object.entries(DOC_CATEGORIES).map(([v, { label }]) => ({ value: v, label }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Documents
+          {docs.length > 0 && <span className="text-slate-400 font-normal ml-2">{docs.length}</span>}
+        </h3>
+        <Button size="sm" onClick={() => navigate(`/documents/new?project=${projectId}`)}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          New Document
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2">
+        <div className="flex-1 relative">
+          <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <Input className="pl-10" placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} options={catOptions} placeholder="All categories" />
+      </div>
+
+      {/* Documents grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[1,2,3,4].map((i) => <Skeleton key={i} variant="card" className="h-28" />)}
+        </div>
+      ) : docs.length === 0 ? (
+        <EmptyState title="No documents" description="Create a document to get started." />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {docs.map((doc) => (
+            <div
+              key={doc._id}
+              onClick={() => navigate(`/documents/${doc._id}`)}
+              className="card p-4 cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{doc.title}</h4>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Badge color={DOC_CATEGORIES[doc.category]?.color || 'default'} size="sm">
+                    {DOC_CATEGORIES[doc.category]?.label || doc.category}
+                  </Badge>
+                  <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5">v{doc.version}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-xs text-slate-400">
+                  {doc.createdBy?.name && <span>{doc.createdBy.name}</span>}
+                  <span>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteId(doc._id); }}
+                  className="p-1 rounded-lg text-slate-300 hover:text-danger-600 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                </button>
+              </div>
+              {doc.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {doc.tags.slice(0, 4).map((tag) => (
+                    <span key={tag} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded px-1.5 py-0.5">#{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">Delete Document?</h3>
+            <p className="text-sm text-slate-500 mb-4">This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setDeleteId(null)}>Cancel</Button>
+              <Button size="sm" variant="danger" onClick={() => handleDelete(deleteId)}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Revenue Tab Component ────────────────────────────
 const REVENUE_CATEGORIES = [
@@ -226,6 +370,10 @@ const TABS = [
   {
     id: 'details', label: 'Details',
     icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>,
+  },
+  {
+    id: 'documents', label: 'Docs',
+    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>,
   },
   {
     id: 'revenue', label: 'Revenue', adminOnly: true,
@@ -1265,6 +1413,7 @@ export default function ProjectDetailPage() {
       {activeTab === 'milestones' && renderMilestones()}
       {activeTab === 'team' && renderTeam()}
       {activeTab === 'details' && renderDetails()}
+      {activeTab === 'documents' && <DocumentsTab projectId={id} navigate={navigate} />}
       {activeTab === 'revenue' && user?.role === 'super_admin' && <RevenueTab projectId={id} revenues={revenues} setRevenues={setRevenues} toast={toast} />}
       {activeTab === 'discussion' && (
         <div>

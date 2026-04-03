@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { documentService, projectService } from '../../services';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Skeleton } from '../../components/ui';
@@ -29,13 +29,14 @@ export default function DocumentEditor() {
   const navigate = useNavigate();
   const toast = useToast();
 
+  const [searchParams] = useSearchParams();
   const isEditMode = !!id;
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('other');
   const [tags, setTags] = useState('');
-  const [project, setProject] = useState('');
+  const [project, setProject] = useState(searchParams.get('project') || '');
   const [projects, setProjects] = useState([]);
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(false);
