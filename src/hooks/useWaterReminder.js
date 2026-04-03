@@ -1,6 +1,24 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 const INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const STORAGE_KEY = 'pms_water_next';
+
+function getNextTime() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    const t = Number(stored);
+    if (t > Date.now()) return t;
+  }
+  const next = Date.now() + INTERVAL_MS;
+  localStorage.setItem(STORAGE_KEY, String(next));
+  return next;
+}
+
+function setNextTime() {
+  const next = Date.now() + INTERVAL_MS;
+  localStorage.setItem(STORAGE_KEY, String(next));
+  return next;
+}
 
 function playChime() {
   try {
@@ -25,13 +43,15 @@ function playChime() {
 
 export default function useWaterReminder() {
   const [showReminder, setShowReminder] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(INTERVAL_MS / 1000);
-  const nextRef = useRef(Date.now() + INTERVAL_MS);
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    return Math.max(0, Math.round((getNextTime() - Date.now()) / 1000));
+  });
+  const nextRef = useRef(getNextTime());
 
   const triggerReminder = useCallback(() => {
     playChime();
     setShowReminder(true);
-    nextRef.current = Date.now() + INTERVAL_MS;
+    nextRef.current = setNextTime();
     setTimeout(() => setShowReminder(false), 10000);
   }, []);
 
@@ -43,20 +63,17 @@ export default function useWaterReminder() {
     playChime();
   }, []);
 
-  // Main interval
-  useEffect(() => {
-    const id = setInterval(triggerReminder, INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [triggerReminder]);
-
-  // Countdown tick every second
+  // Countdown tick every second + trigger when time is up
   useEffect(() => {
     const id = setInterval(() => {
       const diff = Math.max(0, Math.round((nextRef.current - Date.now()) / 1000));
       setSecondsLeft(diff);
+      if (diff === 0) {
+        triggerReminder();
+      }
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [triggerReminder]);
 
   return { showReminder, dismissReminder, testSound, secondsLeft };
 }
