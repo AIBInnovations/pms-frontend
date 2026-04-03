@@ -47,14 +47,14 @@ export default function FileList({ files = [], onDelete, onAnnotate, baseUrl = '
         <div className="grid grid-cols-2 gap-2">
           {images.map((file) => (
             <div key={file._id} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-              <a href={`${baseUrl}${file.url}`} target="_blank" rel="noopener noreferrer">
+              <div onClick={() => onAnnotate ? onAnnotate(file) : window.open(`${baseUrl}${file.url}`, '_blank')} className="cursor-pointer">
                 <img
                   src={`${baseUrl}${file.url}`}
                   alt={file.name}
                   className="w-full h-32 object-cover"
                   loading="lazy"
                 />
-              </a>
+              </div>
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                 <p className="text-[11px] text-white truncate flex-1 mr-2">{file.name}</p>

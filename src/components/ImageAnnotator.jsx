@@ -262,35 +262,10 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
     setEditingTextIdx(null);
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKey = (e) => {
-      // Don't capture when text input is open
-      if (textInput) return;
-
-      // Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
-
-      if (e.key === 'v' || e.key === 'V') { setTool('select'); return; }
-      if (e.key === 'r' || e.key === 'R') { setTool('rect'); setSelectedIdx(null); return; }
-      if (e.key === 'c' || e.key === 'C') { setTool('circle'); setSelectedIdx(null); return; }
-      if (e.key === 't' || e.key === 'T') { setTool('text'); setSelectedIdx(null); return; }
-      if (selectedIdx === null) return;
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        deleteSelected();
-      }
-      if (e.key === 'Escape') setSelectedIdx(null);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [selectedIdx, textInput, undo, redo, deleteSelected]);
-
   const pushAnnotations = useCallback((updater) => {
     setAnnotations((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      setRedoStack([]); // clear redo on any new change
+      setRedoStack([]);
       return next;
     });
   }, []);
@@ -321,6 +296,29 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose, saving }) {
   }, [selectedIdx, pushAnnotations]);
 
   const clearAll = () => { pushAnnotations([]); setSelectedIdx(null); };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (textInput) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+
+      if (e.key === 'v' || e.key === 'V') { setTool('select'); return; }
+      if (e.key === 'r' || e.key === 'R') { setTool('rect'); setSelectedIdx(null); return; }
+      if (e.key === 'c' || e.key === 'C') { setTool('circle'); setSelectedIdx(null); return; }
+      if (e.key === 't' || e.key === 'T') { setTool('text'); setSelectedIdx(null); return; }
+      if (selectedIdx === null) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelected();
+      }
+      if (e.key === 'Escape') setSelectedIdx(null);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [selectedIdx, textInput, undo, redo, deleteSelected]);
 
   const handleSave = () => {
     setSelectedIdx(null);
