@@ -4,6 +4,7 @@ import CommentSection from '../../components/comments/CommentSection';
 import { taskService, projectService, bugService } from '../../services';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, Input, Select, FileUpload, FileList } from '../../components/ui';
+import ImageAnnotator from '../../components/ImageAnnotator';
 import {
   TASK_TYPES,
   TASK_PRIORITIES,
@@ -209,6 +210,8 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [dirty, setDirty] = useState(false);
+  const [annotatingFile, setAnnotatingFile] = useState(null);
+  const [savingAnnotation, setSavingAnnotation] = useState(false);
 
   const canEdit = ['super_admin', 'project_manager', 'developer'].includes(user?.role);
   const canManage = ['super_admin', 'project_manager'].includes(user?.role);
@@ -378,6 +381,22 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
     }
   }, [taskId, toast]);
 
+  const handleAnnotationSave = useCallback(async (dataUrl) => {
+    setSavingAnnotation(true);
+    try {
+      const name = `annotated-${annotatingFile?.name || 'image.png'}`;
+      const res = await taskService.saveAnnotatedImage(taskId, dataUrl, name);
+      setTask((prev) => ({ ...prev, attachments: [...(prev.attachments || []), res.data] }));
+      toast.success('Annotated image saved');
+      setAnnotatingFile(null);
+      setDirty(true);
+    } catch {
+      toast.error('Failed to save annotated image');
+    } finally {
+      setSavingAnnotation(false);
+    }
+  }, [taskId, annotatingFile, toast]);
+
   const toggleAssignee = useCallback(async (memberId) => {
     if (!task) return;
     const currentIds = task.assignees?.map((a) => a._id) || [];
@@ -401,6 +420,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   const checklistPercentage = totalChecklist > 0 ? Math.round((checkedCount / totalChecklist) * 100) : 0;
 
   return (
+    <>
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/20" onClick={() => { handleSyncAndClose(); onClose(); }} />
@@ -840,7 +860,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
                     <span className="text-slate-400 font-normal">({task.attachments.length})</span>
                   )}
                 </h3>
-                <FileList files={task.attachments || []} onDelete={canEdit ? handleDeleteAttachment : undefined} />
+                <FileList files={task.attachments || []} onDelete={canEdit ? handleDeleteAttachment : undefined} onAnnotate={canEdit ? setAnnotatingFile : undefined} />
                 {canEdit && (
                   <div className="mt-3">
                     <FileUpload onUpload={handleUpload} loading={uploading} />
@@ -882,5 +902,15 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
         )}
       </div>
     </div>
+
+    {annotatingFile && (
+      <ImageAnnotator
+        imageUrl={annotatingFile.url}
+        onSave={handleAnnotationSave}
+        onClose={() => setAnnotatingFile(null)}
+        saving={savingAnnotation}
+      />
+    )}
+    </>
   );
 }

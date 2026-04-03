@@ -70,6 +70,11 @@ const taskService = {
     const { data } = await api.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
     return data;
   },
+
+  async saveAnnotatedImage(taskId, base64Image, name) {
+    const { data } = await api.post(`/tasks/${taskId}/annotated-image`, { image: base64Image, name });
+    return data;
+  },
 };
 
 export default taskService;

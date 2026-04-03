@@ -22,7 +22,12 @@ const iconColors = {
   file: 'text-slate-400 bg-slate-100 dark:bg-slate-700',
 };
 
-export default function FileList({ files = [], onDelete, baseUrl = '' }) {
+function isImage(name) {
+  const ext = name?.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+}
+
+export default function FileList({ files = [], onDelete, onAnnotate, baseUrl = '' }) {
   if (!files.length) return null;
 
   return (
@@ -55,6 +60,17 @@ export default function FileList({ files = [], onDelete, baseUrl = '' }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
               </a>
+              {onAnnotate && isImage(file.name) && (
+                <button
+                  onClick={() => onAnnotate(file)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                  title="Annotate image"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
+                  </svg>
+                </button>
+              )}
               {onDelete && (
                 <button
                   onClick={() => onDelete(file._id)}
