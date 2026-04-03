@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 const INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const CHIME_LOOP_MS = 4000; // replay chime every 4 seconds
 const STORAGE_KEY = 'pms_water_next';
 
 function getNextTime() {
@@ -47,21 +48,39 @@ export default function useWaterReminder() {
     return Math.max(0, Math.round((getNextTime() - Date.now()) / 1000));
   });
   const nextRef = useRef(getNextTime());
+  const chimeLoopRef = useRef(null);
+
+  const stopChimeLoop = useCallback(() => {
+    if (chimeLoopRef.current) {
+      clearInterval(chimeLoopRef.current);
+      chimeLoopRef.current = null;
+    }
+  }, []);
+
+  const startChimeLoop = useCallback(() => {
+    stopChimeLoop();
+    playChime();
+    chimeLoopRef.current = setInterval(playChime, CHIME_LOOP_MS);
+  }, [stopChimeLoop]);
 
   const triggerReminder = useCallback(() => {
-    playChime();
+    startChimeLoop();
     setShowReminder(true);
     nextRef.current = setNextTime();
-    setTimeout(() => setShowReminder(false), 10000);
-  }, []);
+  }, [startChimeLoop]);
 
   const dismissReminder = useCallback(() => {
+    stopChimeLoop();
     setShowReminder(false);
-  }, []);
+  }, [stopChimeLoop]);
 
-  const testSound = useCallback(() => {
-    playChime();
-  }, []);
+  const testReminder = useCallback(() => {
+    startChimeLoop();
+    setShowReminder(true);
+  }, [startChimeLoop]);
+
+  // Cleanup on unmount
+  useEffect(() => stopChimeLoop, [stopChimeLoop]);
 
   // Countdown tick every second + trigger when time is up
   useEffect(() => {
@@ -75,5 +94,5 @@ export default function useWaterReminder() {
     return () => clearInterval(id);
   }, [triggerReminder]);
 
-  return { showReminder, dismissReminder, testSound, secondsLeft };
+  return { showReminder, dismissReminder, testReminder, secondsLeft };
 }
