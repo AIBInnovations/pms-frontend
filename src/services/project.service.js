@@ -51,6 +51,23 @@ const projectService = {
     const { data } = await api.delete(`/projects/${projectId}/milestones/${milestoneId}`);
     return data;
   },
+  // Revenues
+  async getRevenues(projectId) {
+    const { data } = await api.get(`/projects/${projectId}/revenues`);
+    return data;
+  },
+  async addRevenue(projectId, revenueData) {
+    const { data } = await api.post(`/projects/${projectId}/revenues`, revenueData);
+    return data;
+  },
+  async updateRevenue(projectId, revenueId, revenueData) {
+    const { data } = await api.patch(`/projects/${projectId}/revenues/${revenueId}`, revenueData);
+    return data;
+  },
+  async removeRevenue(projectId, revenueId) {
+    const { data } = await api.delete(`/projects/${projectId}/revenues/${revenueId}`);
+    return data;
+  },
 };
 
 export default projectService;

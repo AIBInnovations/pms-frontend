@@ -30,6 +30,185 @@ function toInputDate(dateStr) {
 const BoardIcon = ({ className = 'w-4 h-4' }) => <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" /></svg>;
 const ListIcon = ({ className = 'w-4 h-4' }) => <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>;
 
+// ─── Revenue Tab Component ────────────────────────────
+const REVENUE_CATEGORIES = [
+  { value: 'development', label: 'Development' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'custom', label: 'Custom' },
+];
+
+function RevenueTab({ projectId, revenues, setRevenues, toast }) {
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ category: 'development', customLabel: '', amount: '', date: '', notes: '' });
+  const [editingId, setEditingId] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    projectService.getRevenues(projectId)
+      .then((res) => setRevenues(res.data || []))
+      .catch(() => toast.error('Failed to load revenues'))
+      .finally(() => setLoading(false));
+  }, [projectId]);
+
+  const totalRevenue = revenues.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+  const resetForm = () => {
+    setForm({ category: 'development', customLabel: '', amount: '', date: '', notes: '' });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.amount || Number(form.amount) <= 0) { toast.error('Amount is required'); return; }
+    if (form.category === 'custom' && !form.customLabel.trim()) { toast.error('Custom label is required'); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        category: form.category,
+        customLabel: form.category === 'custom' ? form.customLabel.trim() : '',
+        amount: Number(form.amount),
+        date: form.date || new Date().toISOString(),
+        notes: form.notes.trim(),
+      };
+      if (editingId) {
+        const res = await projectService.updateRevenue(projectId, editingId, payload);
+        setRevenues((prev) => prev.map((r) => r._id === editingId ? res.data : r));
+        toast.success('Revenue updated');
+      } else {
+        const res = await projectService.addRevenue(projectId, payload);
+        setRevenues((prev) => [...prev, res.data]);
+        toast.success('Revenue added');
+      }
+      resetForm();
+    } catch {
+      toast.error('Failed to save revenue');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEdit = (rev) => {
+    setForm({
+      category: rev.category,
+      customLabel: rev.customLabel || '',
+      amount: rev.amount,
+      date: rev.date ? new Date(rev.date).toISOString().split('T')[0] : '',
+      notes: rev.notes || '',
+    });
+    setEditingId(rev._id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (revId) => {
+    try {
+      await projectService.removeRevenue(projectId, revId);
+      setRevenues((prev) => prev.filter((r) => r._id !== revId));
+      toast.success('Revenue removed');
+    } catch {
+      toast.error('Failed to remove revenue');
+    }
+  };
+
+  const getCategoryLabel = (rev) => rev.category === 'custom' ? (rev.customLabel || 'Custom') : REVENUE_CATEGORIES.find((c) => c.value === rev.category)?.label || rev.category;
+
+  if (loading) return <div className="space-y-3">{[1,2,3].map((i) => <Skeleton key={i} variant="card" className="h-16" />)}</div>;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Revenue</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Total: <span className="font-semibold text-emerald-600">${totalRevenue.toLocaleString()}</span></p>
+        </div>
+        <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          Add Revenue
+        </Button>
+      </div>
+
+      {/* Add/Edit form */}
+      {showForm && (
+        <div className="card p-5 space-y-4">
+          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">{editingId ? 'Edit Revenue' : 'New Revenue'}</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
+              <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={REVENUE_CATEGORIES} />
+            </div>
+            {form.category === 'custom' && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Custom Label</label>
+                <Input value={form.customLabel} onChange={(e) => setForm({ ...form, customLabel: e.target.value })} placeholder="e.g. Consulting" />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Amount ($)</label>
+              <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Date</label>
+              <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Notes</label>
+            <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={resetForm}>Cancel</Button>
+            <Button size="sm" onClick={handleSubmit} loading={saving}>{editingId ? 'Update' : 'Add'}</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue list */}
+      {revenues.length === 0 && !showForm ? (
+        <EmptyState title="No revenue entries" description="Add revenue entries to track income for this project." />
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-4 py-2.5">Category</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-4 py-2.5">Amount</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-4 py-2.5">Date</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-4 py-2.5">Notes</th>
+                <th className="text-right text-xs font-medium text-slate-500 uppercase px-4 py-2.5">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {revenues.map((rev) => (
+                <tr key={rev._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                  <td className="px-4 py-3">
+                    <Badge color={rev.category === 'development' ? 'primary' : rev.category === 'maintenance' ? 'warning' : 'default'} size="sm">
+                      {getCategoryLabel(rev)}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-semibold text-emerald-600">${(rev.amount || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-500">{formatDate(rev.date)}</td>
+                  <td className="px-4 py-3 text-sm text-slate-500 truncate max-w-[200px]">{rev.notes || '--'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => startEdit(rev)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" /></svg>
+                      </button>
+                      <button onClick={() => handleDelete(rev._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tab config with icons ────────────────────────────
 const TABS = [
   {
@@ -47,6 +226,10 @@ const TABS = [
   {
     id: 'details', label: 'Details',
     icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>,
+  },
+  {
+    id: 'revenue', label: 'Revenue', adminOnly: true,
+    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   },
   {
     id: 'discussion', label: 'Discussion',
@@ -75,6 +258,7 @@ export default function ProjectDetailPage() {
   const [tasksMeta, setTasksMeta] = useState(null);
   const [taskStats, setTaskStats] = useState(null);
   const [milestones, setMilestones] = useState([]);
+  const [revenues, setRevenues] = useState([]);
   const [error, setError] = useState(null);
 
   // Task modals
@@ -1081,6 +1265,7 @@ export default function ProjectDetailPage() {
       {activeTab === 'milestones' && renderMilestones()}
       {activeTab === 'team' && renderTeam()}
       {activeTab === 'details' && renderDetails()}
+      {activeTab === 'revenue' && user?.role === 'super_admin' && <RevenueTab projectId={id} revenues={revenues} setRevenues={setRevenues} toast={toast} />}
       {activeTab === 'discussion' && (
         <div>
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Discussion</h3>
@@ -1091,7 +1276,7 @@ export default function ProjectDetailPage() {
       {/* Floating bottom tab bar */}
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40">
         <div className="flex items-center gap-0.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/30 border border-slate-200/60 dark:border-slate-700/60 p-1">
-          {TABS.map((tab) => {
+          {TABS.filter((t) => !t.adminOnly || user?.role === 'super_admin').map((tab) => {
             const active = activeTab === tab.id;
             return (
               <button
