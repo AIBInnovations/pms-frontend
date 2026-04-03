@@ -204,6 +204,7 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
   const [selectedStage, setSelectedStage] = useState('');
   const [transitioning, setTransitioning] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [teamMembers, setTeamMembers] = useState([]);
@@ -342,14 +343,16 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
 
   const handleUpload = useCallback(async (file) => {
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const res = await taskService.uploadAttachment(taskId, file);
+      const res = await taskService.uploadAttachment(taskId, file, (pct) => setUploadProgress(pct));
       setTask((prev) => ({ ...prev, attachments: [...(prev.attachments || []), res.data] }));
       toast.success('File uploaded');
     } catch {
       toast.error('Failed to upload file');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   }, [taskId, toast]);
 
@@ -869,6 +872,17 @@ export default function TaskDetailDrawer({ taskId, isOpen, onClose, onUpdated })
                 {canEdit && (
                   <div className="mt-3">
                     <FileUpload onUpload={handleUpload} loading={uploading} />
+                    {uploading && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-slate-500">Uploading...</span>
+                          <span className="text-xs font-medium text-primary-600">{uploadProgress}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-primary-500 rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
