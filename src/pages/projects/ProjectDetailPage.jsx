@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import CommentSection from '../../components/comments/CommentSection';
@@ -46,6 +46,9 @@ function DocumentsTab({ projectId, navigate }) {
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef(null);
   const toast = useToast();
 
   const fetchDocs = useCallback(async () => {
@@ -65,6 +68,24 @@ function DocumentsTab({ projectId, navigate }) {
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      const res = await documentService.uploadFile(file, projectId, 'other', (pct) => setUploadProgress(pct));
+      setDocs((prev) => [res.data, ...prev]);
+      toast.success('File uploaded');
+    } catch {
+      toast.error('Failed to upload file');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
       await documentService.delete(id);
@@ -76,6 +97,17 @@ function DocumentsTab({ projectId, navigate }) {
     }
   };
 
+  const getFileIcon = (doc) => {
+    if (doc.fileUrl) {
+      const ext = doc.fileName?.split('.').pop()?.toLowerCase();
+      if (['pdf'].includes(ext)) return { icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', color: 'text-red-500 bg-red-50 dark:bg-red-900/30' };
+      if (['zip', 'rar', 'gz'].includes(ext)) return { icon: 'M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z', color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/30' };
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return { icon: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' };
+      return { icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', color: 'text-slate-400 bg-slate-100 dark:bg-slate-700' };
+    }
+    return { icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', color: 'text-primary-500 bg-primary-50 dark:bg-primary-900/30' };
+  };
+
   const catOptions = Object.entries(DOC_CATEGORIES).map(([v, { label }]) => ({ value: v, label }));
 
   return (
@@ -85,11 +117,31 @@ function DocumentsTab({ projectId, navigate }) {
           Documents
           {docs.length > 0 && <span className="text-slate-400 font-normal ml-2">{docs.length}</span>}
         </h3>
-        <Button size="sm" onClick={() => navigate(`/documents/new?project=${projectId}`)}>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          New Document
-        </Button>
+        <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+          <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} loading={uploading}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+            Upload File
+          </Button>
+          <Button size="sm" onClick={() => navigate(`/documents/new?project=${projectId}`)}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            New Doc
+          </Button>
+        </div>
       </div>
+
+      {/* Upload progress */}
+      {uploading && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-slate-500">Uploading...</span>
+            <span className="text-xs font-medium text-primary-600">{uploadProgress}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-full bg-primary-500 rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-2">
@@ -108,52 +160,52 @@ function DocumentsTab({ projectId, navigate }) {
           {[1,2,3,4].map((i) => <Skeleton key={i} variant="card" className="h-28" />)}
         </div>
       ) : docs.length === 0 ? (
-        <EmptyState title="No documents" description="Create a document to get started." />
+        <EmptyState title="No documents" description="Upload a file or create a text document." />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {docs.map((doc) => (
-            <div
-              key={doc._id}
-              onClick={() => navigate(`/documents/${doc._id}`)}
-              className="card p-4 cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{doc.title}</h4>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Badge color={DOC_CATEGORIES[doc.category]?.color || 'default'} size="sm">
-                    {DOC_CATEGORIES[doc.category]?.label || doc.category}
-                  </Badge>
-                  <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5">v{doc.version}</span>
+          {docs.map((doc) => {
+            const fi = getFileIcon(doc);
+            const isFile = !!doc.fileUrl;
+            return (
+              <div
+                key={doc._id}
+                onClick={() => isFile ? window.open(doc.fileUrl, '_blank') : navigate(`/documents/${doc._id}`)}
+                className="card p-4 cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${fi.color}`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={fi.icon} />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{doc.title}</h4>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(doc._id); }}
+                        className="p-1 rounded-lg text-slate-300 hover:text-danger-600 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge color={DOC_CATEGORIES[doc.category]?.color || 'default'} size="sm">
+                        {DOC_CATEGORIES[doc.category]?.label || doc.category}
+                      </Badge>
+                      {isFile && <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5">{doc.fileName?.split('.').pop()?.toUpperCase()}</span>}
+                      {!isFile && <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5">v{doc.version}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                      {doc.createdBy?.name && <span>{doc.createdBy.name}</span>}
+                      <span>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-xs text-slate-400">
-                  {doc.createdBy?.name && <span>{doc.createdBy.name}</span>}
-                  <span>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setDeleteId(doc._id); }}
-                  className="p-1 rounded-lg text-slate-300 hover:text-danger-600 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                  </svg>
-                </button>
-              </div>
-              {doc.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {doc.tags.slice(0, 4).map((tag) => (
-                    <span key={tag} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded px-1.5 py-0.5">#{tag}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

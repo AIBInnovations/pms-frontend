@@ -21,6 +21,19 @@ const documentService = {
     return data;
   },
 
+  async uploadFile(file, projectId, category, onProgress) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('project', projectId);
+    formData.append('title', file.name);
+    if (category) formData.append('category', category);
+    const { data } = await api.post('/documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress ? (e) => onProgress(Math.round((e.loaded * 100) / e.total)) : undefined,
+    });
+    return data;
+  },
+
   async delete(id) {
     const { data } = await api.delete(`/documents/${id}`);
     return data;
