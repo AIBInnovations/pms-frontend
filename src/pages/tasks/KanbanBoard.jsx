@@ -11,13 +11,17 @@ function sortByPriority(tasks) {
 
 const PRIORITY_ORDER = ['critical', 'high', 'medium', 'low'];
 
-function getDueUrgency(dueDate) {
+function getDueUrgency(dueDate, stage) {
   if (!dueDate) return null;
   const now = new Date();
   const due = new Date(dueDate);
   const diffMs = due - now;
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays < 0) return 'overdue';
+  if (diffDays < 0) {
+    // Only mark overdue for todo/in_progress, not in_review/testing/done
+    if (['todo', 'in_progress'].includes(stage)) return 'overdue';
+    return 'normal';
+  }
   if (diffDays < 1) return 'today';
   if (diffDays <= 3) return 'soon';
   return 'normal';
@@ -216,7 +220,7 @@ function TaskCard({ task, onDragStart, onDragOver, onClick, onPriorityChange, te
         </div>
         <p className="text-sm font-medium text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug">{task.title}</p>
         {task.dueDate && (() => {
-          const urgency = getDueUrgency(task.dueDate);
+          const urgency = getDueUrgency(task.dueDate, task.stage);
           return (
             <span className={`inline-flex items-center gap-1 text-[11px] font-medium mt-2 px-1.5 py-0.5 rounded-md ${DUE_STYLES[urgency]}`}>
               {urgency === 'overdue' && (

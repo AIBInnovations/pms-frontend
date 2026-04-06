@@ -14,7 +14,7 @@ import {
 } from '../../utils/constants';
 
 function MyTaskCard({ task, onDragStart, onClick }) {
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.stage !== 'done';
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && ['todo', 'in_progress'].includes(task.stage);
 
   return (
     <div
