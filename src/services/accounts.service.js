@@ -18,6 +18,16 @@ const accountsService = {
   async addWithdrawal(data) { return (await api.post('/accounts/withdrawals', data)).data; },
   async updateWithdrawal(id, data) { return (await api.patch(`/accounts/withdrawals/${id}`, data)).data; },
   async deleteWithdrawal(id) { return (await api.delete(`/accounts/withdrawals/${id}`)).data; },
+  async getRecurringPlans() { return (await api.get('/accounts/recurring')).data; },
+  async addRecurringPlan(data) { return (await api.post('/accounts/recurring', data)).data; },
+  async updateRecurringPlan(id, data) { return (await api.patch(`/accounts/recurring/${id}`, data)).data; },
+  async deleteRecurringPlan(id) { return (await api.delete(`/accounts/recurring/${id}`)).data; },
+
+  async getInvoices(params) { return (await api.get('/accounts/invoices', { params })).data; },
+  async generateInvoice(data) { return (await api.post('/accounts/invoices', data)).data; },
+  async updateInvoice(id, data) { return (await api.patch(`/accounts/invoices/${id}`, data)).data; },
+  async markInvoicePaid(id, data) { return (await api.post(`/accounts/invoices/${id}/pay`, data)).data; },
+  async deleteInvoice(id) { return (await api.delete(`/accounts/invoices/${id}`)).data; },
 };
 
 export default accountsService;

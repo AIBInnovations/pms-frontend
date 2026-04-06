@@ -49,6 +49,9 @@ export default function AccountsPage() {
   const [payments, setPayments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,6 +81,13 @@ export default function AccountsPage() {
       } else if (tab === 'withdrawals') {
         const res = await accountsService.getWithdrawals({ limit: 100 });
         setWithdrawals(res.data || []);
+      } else if (tab === 'recurring') {
+        const [plansRes, invRes] = await Promise.all([
+          accountsService.getRecurringPlans(),
+          accountsService.getInvoices({ limit: 200 }),
+        ]);
+        setPlans(plansRes.data || []);
+        setInvoices(invRes.data || []);
       }
     } catch {
       toast.error('Failed to load data');
@@ -131,6 +141,7 @@ export default function AccountsPage() {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
+    { id: 'recurring', label: 'Recurring' },
     { id: 'payments', label: 'Payments' },
     { id: 'expenses', label: 'Expenses' },
     { id: 'withdrawals', label: 'Withdrawals' },
@@ -351,6 +362,17 @@ export default function AccountsPage() {
         />
       )}
 
+      {/* Recurring Tab */}
+      {tab === 'recurring' && (
+        <RecurringTab
+          plans={plans} setPlans={setPlans}
+          invoices={invoices} setInvoices={setInvoices}
+          selectedPlan={selectedPlan} setSelectedPlan={setSelectedPlan}
+          projects={projects} projectOptions={projectOptions}
+          loading={loading} toast={toast} fetchData={fetchData}
+        />
+      )}
+
       {/* Withdrawals Tab */}
       {tab === 'withdrawals' && (
         <TransactionTab
@@ -383,6 +405,276 @@ export default function AccountsPage() {
             </>
           )}
         />
+      )}
+    </div>
+  );
+}
+
+// ─── Recurring Tab Component ─────────────────────────
+function RecurringTab({ plans, setPlans, invoices, setInvoices, selectedPlan, setSelectedPlan, projects, projectOptions, loading, toast, fetchData }) {
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [planForm, setPlanForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [payingId, setPayingId] = useState(null);
+  const [payForm, setPayForm] = useState({});
+
+  const handleAddPlan = async () => {
+    if (!planForm.project || !planForm.recurringAmount || !planForm.startDate) {
+      toast.error('Project, recurring amount, and start date are required'); return;
+    }
+    setSaving(true);
+    try {
+      await accountsService.addRecurringPlan({
+        ...planForm,
+        setupFee: Number(planForm.setupFee || 0),
+        recurringAmount: Number(planForm.recurringAmount),
+      });
+      toast.success('Recurring plan created');
+      setPlanForm({});
+      setShowPlanForm(false);
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.error?.message || 'Failed to create plan');
+    } finally { setSaving(false); }
+  };
+
+  const handleDeletePlan = async (id) => {
+    try {
+      await accountsService.deleteRecurringPlan(id);
+      toast.success('Plan deleted');
+      if (selectedPlan?._id === id) setSelectedPlan(null);
+      fetchData();
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const currentPeriod = new Date().toISOString().slice(0, 7);
+
+  const handleGenerateInvoice = async (plan, type, period) => {
+    try {
+      await accountsService.generateInvoice({
+        project: plan.project._id,
+        recurringPlan: plan._id,
+        type,
+        period: type === 'recurring' ? period : '',
+        amount: type === 'setup' ? plan.setupFee : plan.recurringAmount,
+        dueDate: new Date().toISOString(),
+      });
+      toast.success('Invoice generated');
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.error?.message || 'Failed to generate invoice');
+    }
+  };
+
+  const handleMarkPaid = async (invoiceId) => {
+    try {
+      await accountsService.markInvoicePaid(invoiceId, payForm);
+      toast.success('Marked as paid');
+      setPayingId(null);
+      setPayForm({});
+      fetchData();
+    } catch { toast.error('Failed'); }
+  };
+
+  const handleDeleteInvoice = async (id) => {
+    try {
+      await accountsService.deleteInvoice(id);
+      toast.success('Invoice deleted');
+      fetchData();
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const planInvoices = selectedPlan ? invoices.filter((i) => i.recurringPlan?._id === selectedPlan._id || i.recurringPlan === selectedPlan._id) : [];
+
+  // Generate month options for invoicing
+  const monthOptions = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
+    monthOptions.push(d.toISOString().slice(0, 7));
+  }
+
+  if (loading) return <div className="space-y-3">{[1,2,3].map((i) => <Skeleton key={i} variant="card" className="h-20" />)}</div>;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Recurring Payment Plans <span className="text-slate-400 font-normal">{plans.length}</span></h3>
+        <Button size="sm" onClick={() => { setPlanForm({}); setShowPlanForm(true); }}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          Add Plan
+        </Button>
+      </div>
+
+      {/* Add plan form */}
+      {showPlanForm && (
+        <div className="card p-5">
+          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">New Recurring Plan</h4>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Select value={planForm.project || ''} onChange={(e) => setPlanForm({ ...planForm, project: e.target.value })} options={projectOptions} placeholder="Project *" />
+            <Input type="number" value={planForm.setupFee || ''} onChange={(e) => setPlanForm({ ...planForm, setupFee: e.target.value })} placeholder="Setup / One-time Fee" />
+            <Input type="number" value={planForm.recurringAmount || ''} onChange={(e) => setPlanForm({ ...planForm, recurringAmount: e.target.value })} placeholder="Monthly Amount *" />
+            <Input type="date" value={planForm.startDate || ''} onChange={(e) => setPlanForm({ ...planForm, startDate: e.target.value })} />
+            <Select value={planForm.frequency || 'monthly'} onChange={(e) => setPlanForm({ ...planForm, frequency: e.target.value })} options={[{ value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'yearly', label: 'Yearly' }]} />
+            <Input value={planForm.notes || ''} onChange={(e) => setPlanForm({ ...planForm, notes: e.target.value })} placeholder="Notes" />
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="secondary" size="sm" onClick={() => setShowPlanForm(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleAddPlan} loading={saving}>Create Plan</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Plans list */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {plans.map((plan) => {
+          const planInvs = invoices.filter((i) => (i.recurringPlan?._id || i.recurringPlan) === plan._id);
+          const paidCount = planInvs.filter((i) => i.status === 'paid').length;
+          const totalPaid = planInvs.filter((i) => i.status === 'paid').reduce((s, i) => s + (i.paidAmount || i.amount), 0);
+          const isSelected = selectedPlan?._id === plan._id;
+
+          return (
+            <div
+              key={plan._id}
+              onClick={() => setSelectedPlan(isSelected ? null : plan)}
+              className={`card p-4 cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary-500 border-primary-300' : 'hover:shadow-md'}`}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{plan.project?.code} — {plan.project?.name}</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge size="sm" color={plan.status === 'active' ? 'success' : plan.status === 'paused' ? 'warning' : 'default'}>{plan.status}</Badge>
+                    <span className="text-xs text-slate-400">{plan.frequency}</span>
+                  </div>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan._id); }}
+                  className="p-1 rounded-lg text-slate-300 hover:text-danger-600 transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79" />
+                  </svg>
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                {plan.setupFee > 0 && (
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase">Setup Fee</p>
+                    <p className={`text-sm font-semibold ${plan.setupFeePaid ? 'text-emerald-600' : 'text-amber-600'}`}>{fmt(plan.setupFee)}</p>
+                    <p className="text-[10px] text-slate-400">{plan.setupFeePaid ? 'Paid' : 'Pending'}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase">Recurring</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmt(plan.recurringAmount)}/mo</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase">Collected</p>
+                  <p className="text-sm font-semibold text-emerald-600">{fmt(totalPaid)}</p>
+                  <p className="text-[10px] text-slate-400">{paidCount} invoices paid</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {plans.length === 0 && !showPlanForm && <EmptyState title="No recurring plans" description="Add a plan to start tracking recurring payments." />}
+
+      {/* Selected plan: invoices */}
+      {selectedPlan && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Invoices — {selectedPlan.project?.code}
+            </h3>
+            <div className="flex gap-2">
+              {selectedPlan.setupFee > 0 && !selectedPlan.setupFeePaid && (
+                <Button size="sm" variant="secondary" onClick={() => handleGenerateInvoice(selectedPlan, 'setup')}>
+                  Generate Setup Invoice
+                </Button>
+              )}
+              <div className="flex items-center gap-1">
+                <select
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none"
+                  defaultValue={currentPeriod}
+                  id="invoiceMonth"
+                >
+                  {monthOptions.map((m) => <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</option>)}
+                </select>
+                <Button size="sm" onClick={() => handleGenerateInvoice(selectedPlan, 'recurring', document.getElementById('invoiceMonth').value)}>
+                  Generate Invoice
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {planInvoices.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-4">No invoices yet. Generate one above.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-700">
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Invoice</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Type</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Period</th>
+                    <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Amount</th>
+                    <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Status</th>
+                    <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {planInvoices.sort((a, b) => (b.period || '').localeCompare(a.period || '')).map((inv) => (
+                    <tr key={inv._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                      <td className="px-3 py-2.5 text-xs font-mono text-slate-500">{inv.invoiceNumber}</td>
+                      <td className="px-3 py-2.5"><Badge size="sm" color={inv.type === 'setup' ? 'primary' : 'default'}>{inv.type === 'setup' ? 'Setup' : 'Recurring'}</Badge></td>
+                      <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">
+                        {inv.period ? new Date(inv.period + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '--'}
+                      </td>
+                      <td className="px-3 py-2.5 text-sm font-semibold text-right">{fmt(inv.amount)}</td>
+                      <td className="px-3 py-2.5">
+                        <Badge size="sm" color={inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : inv.status === 'sent' ? 'primary' : 'default'}>
+                          {inv.status}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {inv.status !== 'paid' && (
+                            payingId === inv._id ? (
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <select value={payForm.paymentMethod || 'bank_transfer'} onChange={(e) => setPayForm({ ...payForm, paymentMethod: e.target.value })}
+                                  className="text-xs border border-slate-200 dark:border-slate-600 rounded px-1.5 py-1 bg-transparent">
+                                  <option value="bank_transfer">Bank</option><option value="upi">UPI</option><option value="cash">Cash</option>
+                                </select>
+                                <input type="text" value={payForm.paymentReference || ''} onChange={(e) => setPayForm({ ...payForm, paymentReference: e.target.value })}
+                                  placeholder="Ref" className="text-xs border border-slate-200 dark:border-slate-600 rounded px-1.5 py-1 w-20 bg-transparent" />
+                                <button onClick={() => handleMarkPaid(inv._id)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 px-1">Confirm</button>
+                                <button onClick={() => setPayingId(null)} className="text-xs text-slate-400 px-1">Cancel</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setPayingId(inv._id); setPayForm({}); }}
+                                className="text-xs font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
+                                Mark Paid
+                              </button>
+                            )
+                          )}
+                          {inv.status === 'paid' && (
+                            <span className="text-xs text-slate-400">{fmtDate(inv.paidDate)}</span>
+                          )}
+                          <button onClick={() => handleDeleteInvoice(inv._id)}
+                            className="p-1 rounded-lg text-slate-300 hover:text-danger-600 transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
