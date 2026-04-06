@@ -449,14 +449,14 @@ function RecurringTab({ plans, setPlans, invoices, setInvoices, selectedPlan, se
 
   const currentPeriod = new Date().toISOString().slice(0, 7);
 
-  const handleGenerateInvoice = async (plan, type, period) => {
+  const handleGenerateInvoice = async (plan, type, period, customAmount) => {
     try {
       await accountsService.generateInvoice({
         project: plan.project._id,
         recurringPlan: plan._id,
         type,
         period: type === 'recurring' ? period : '',
-        amount: type === 'setup' ? plan.setupFee : plan.recurringAmount,
+        amount: type === 'setup' ? plan.setupFee : (customAmount || plan.recurringAmount),
         dueDate: new Date().toISOString(),
       });
       toast.success('Invoice generated');
@@ -600,8 +600,19 @@ function RecurringTab({ plans, setPlans, invoices, setInvoices, selectedPlan, se
                 >
                   {monthOptions.map((m) => <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</option>)}
                 </select>
-                <Button size="sm" onClick={() => handleGenerateInvoice(selectedPlan, 'recurring', document.getElementById('invoiceMonth').value)}>
-                  Generate Invoice
+                <input
+                  type="number"
+                  id="invoiceAmount"
+                  defaultValue={selectedPlan.recurringAmount}
+                  placeholder="Amount"
+                  className="w-24 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none"
+                />
+                <Button size="sm" onClick={() => handleGenerateInvoice(
+                  selectedPlan, 'recurring',
+                  document.getElementById('invoiceMonth').value,
+                  Number(document.getElementById('invoiceAmount').value) || selectedPlan.recurringAmount
+                )}>
+                  Generate
                 </Button>
               </div>
             </div>
