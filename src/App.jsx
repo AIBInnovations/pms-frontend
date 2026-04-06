@@ -28,6 +28,7 @@ const MyTasksPage = lazy(() => import('./pages/tasks/MyTasksPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const AuditLogPage = lazy(() => import('./pages/settings/AuditLogPage'));
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
+const AccountsPage = lazy(() => import('./pages/accounts/AccountsPage'));
 
 function PageLoader() {
   return (
@@ -87,6 +88,11 @@ export default function App() {
                 <Route path="/reports" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER]}>
                     <ReportsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/accounts" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
+                    <AccountsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<SettingsPage />} />
