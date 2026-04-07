@@ -33,6 +33,8 @@ const LeadsPage = lazy(() => import('./pages/leads/LeadsPage'));
 const PipelinePage = lazy(() => import('./pages/leads/PipelinePage'));
 const FollowUpsPage = lazy(() => import('./pages/leads/FollowUpsPage'));
 const ClientsPage = lazy(() => import('./pages/clients/ClientsPage'));
+const ProposalsPage = lazy(() => import('./pages/proposals/ProposalsPage'));
+const ProposalEditor = lazy(() => import('./pages/proposals/ProposalEditor'));
 
 function PageLoader() {
   return (
@@ -117,6 +119,21 @@ export default function App() {
                 <Route path="/clients" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
                     <ClientsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/proposals" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <ProposalsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/proposals/new" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <ProposalEditor />
+                  </ProtectedRoute>
+                } />
+                <Route path="/proposals/:id/edit" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <ProposalEditor />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<SettingsPage />} />
