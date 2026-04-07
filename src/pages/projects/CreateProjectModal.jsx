@@ -85,16 +85,7 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
     }));
   };
 
-  const validate = () => {
-    const newErrors = {};
-    if (!form.name.trim()) newErrors.name = 'Name is required';
-    if (!form.type.length) newErrors.type = 'At least one type is required';
-    if (form.type.includes('retainer') && !form.recurringAmount) newErrors.recurringAmount = 'Recurring amount is required for retainer';
-    if (form.type.includes('fixed_cost') && !form.budget) newErrors.budget = 'Budget is required for fixed cost';
-    if (!form.projectManagers.length) newErrors.projectManagers = 'At least one Project Manager is required';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const validate = () => true;
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
