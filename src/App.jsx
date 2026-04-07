@@ -29,6 +29,7 @@ const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const AuditLogPage = lazy(() => import('./pages/settings/AuditLogPage'));
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 const AccountsPage = lazy(() => import('./pages/accounts/AccountsPage'));
+const LeadsPage = lazy(() => import('./pages/leads/LeadsPage'));
 
 function PageLoader() {
   return (
@@ -93,6 +94,11 @@ export default function App() {
                 <Route path="/accounts" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
                     <AccountsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/leads" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <LeadsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<SettingsPage />} />

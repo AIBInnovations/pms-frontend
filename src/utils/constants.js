@@ -17,6 +17,69 @@ export const STATUS_LABELS = {
   inactive: 'Inactive',
 };
 
+// ─── Sales / Leads ───────────────────────────────────
+
+export const LEAD_STATUSES = {
+  new: 'New',
+  contacted: 'Contacted',
+  qualified: 'Qualified',
+  proposal_sent: 'Proposal Sent',
+  negotiation: 'Negotiation',
+  won: 'Won',
+  lost: 'Lost',
+};
+
+export const LEAD_STATUS_COLORS = {
+  new: 'default',
+  contacted: 'primary',
+  qualified: 'primary',
+  proposal_sent: 'warning',
+  negotiation: 'warning',
+  won: 'success',
+  lost: 'danger',
+};
+
+export const LEAD_SOURCES = {
+  website: 'Website Form',
+  email: 'Email Inquiry',
+  referral: 'Referral',
+  cold_outreach: 'Cold Outreach',
+  social: 'Social Media',
+  event: 'Event',
+  other: 'Other',
+};
+
+export const LEAD_PIPELINES = {
+  new_business: 'New Business',
+  upsell: 'Upsell',
+  renewal: 'Renewal',
+  partnership: 'Partnership',
+};
+
+export const LEAD_BUDGETS = {
+  under_50k: 'Under ₹50K',
+  '50k_2l': '₹50K – ₹2L',
+  '2l_10l': '₹2L – ₹10L',
+  above_10l: 'Above ₹10L',
+};
+
+export const LEAD_SERVICES = {
+  web_app: 'Web App',
+  mobile_app: 'Mobile App',
+  shopify: 'Shopify',
+  ai: 'AI',
+  automation: 'Automation',
+  other: 'Other',
+};
+
+export const LEAD_LOST_REASONS = {
+  price: 'Price',
+  timeline: 'Timeline',
+  no_response: 'No Response',
+  chose_competitor: 'Chose Competitor',
+  other: 'Other',
+};
+
 // ─── Projects ────────────────────────────────────────
 
 export const PROJECT_TYPES = {

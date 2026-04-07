@@ -11,3 +11,4 @@ export { default as notificationService } from './notification.service';
 export { default as reportService } from './report.service';
 export { default as attendanceService } from './attendance.service';
 export { default as accountsService } from './accounts.service';
+export { default as leadService } from './lead.service';
