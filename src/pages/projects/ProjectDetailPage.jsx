@@ -597,6 +597,7 @@ export default function ProjectDetailPage() {
       startDate: toInputDate(project.startDate),
       endDate: toInputDate(project.endDate),
       budget: project.budget ?? '',
+      recurringAmount: project.recurringAmount ?? '',
       projectManagers: (project.projectManagers || []).map((pm) => pm._id),
       developers: (project.developers || []).map((d) => d._id),
       githubLinks: (project.githubLinks || []).map((l) => ({ ...l })),
@@ -1103,9 +1104,31 @@ export default function ProjectDetailPage() {
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Description</label>
                 <textarea className="input-base min-h-[70px] resize-none" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Project description" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Type</label>
-                <Select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} options={typeOptions} placeholder="Select type" />
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Type <span className="text-xs font-normal text-slate-400">(select one or more)</span></label>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(PROJECT_TYPES).map(([key, label]) => {
+                    const types = Array.isArray(editForm.type) ? editForm.type : (editForm.type ? [editForm.type] : []);
+                    const selected = types.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setEditForm((prev) => {
+                          const cur = Array.isArray(prev.type) ? prev.type : (prev.type ? [prev.type] : []);
+                          return { ...prev, type: cur.includes(key) ? cur.filter((t) => t !== key) : [...cur, key] };
+                        })}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          selected
+                            ? 'bg-primary-600 text-white border-primary-600'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Status</label>
@@ -1119,10 +1142,18 @@ export default function ProjectDetailPage() {
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">End Date</label>
                 <Input type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Budget</label>
-                <Input type="number" value={editForm.budget} onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })} placeholder="0.00" />
-              </div>
+              {(Array.isArray(editForm.type) ? editForm.type : [editForm.type]).includes('fixed_cost') && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Fixed Cost / Budget (&#8377;)</label>
+                  <Input type="number" value={editForm.budget} onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })} placeholder="0" />
+                </div>
+              )}
+              {(Array.isArray(editForm.type) ? editForm.type : [editForm.type]).includes('retainer') && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Monthly Recurring (&#8377;)</label>
+                  <Input type="number" value={editForm.recurringAmount || ''} onChange={(e) => setEditForm({ ...editForm, recurringAmount: e.target.value })} placeholder="0" />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
                   Project Managers
