@@ -56,6 +56,7 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({});
+  const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -100,23 +101,36 @@ export default function AccountsPage() {
 
   const projectOptions = projects.map((p) => ({ value: p._id, label: `${p.code} — ${p.name}` }));
 
-  const resetForm = () => { setForm({}); setShowForm(false); };
+  const resetForm = () => { setForm({}); setEditingId(null); setShowForm(false); };
+
+  const startEdit = (record) => {
+    const isoDate = record.date ? new Date(record.date).toISOString().split('T')[0] : '';
+    setForm({ ...record, date: isoDate, project: record.project?._id || record.project });
+    setEditingId(record._id);
+    setShowForm(true);
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const payload = { ...form, amount: Number(form.amount) };
+      delete payload._id; delete payload.createdAt; delete payload.updatedAt; delete payload.__v; delete payload.createdBy;
+
       if (tab === 'payments') {
         if (!form.project || !form.amount || !form.date) { toast.error('Project, amount, and date are required'); setSaving(false); return; }
-        await accountsService.addPayment({ ...form, amount: Number(form.amount) });
-        toast.success('Payment recorded');
+        if (editingId) await accountsService.updatePayment(editingId, payload);
+        else await accountsService.addPayment(payload);
+        toast.success(editingId ? 'Payment updated' : 'Payment recorded');
       } else if (tab === 'expenses') {
         if (!form.category || !form.amount || !form.date) { toast.error('Category, amount, and date are required'); setSaving(false); return; }
-        await accountsService.addExpense({ ...form, amount: Number(form.amount) });
-        toast.success('Expense recorded');
+        if (editingId) await accountsService.updateExpense(editingId, payload);
+        else await accountsService.addExpense(payload);
+        toast.success(editingId ? 'Expense updated' : 'Expense recorded');
       } else if (tab === 'withdrawals') {
         if (!form.person || !form.amount || !form.date) { toast.error('Person, amount, and date are required'); setSaving(false); return; }
-        await accountsService.addWithdrawal({ ...form, amount: Number(form.amount) });
-        toast.success('Withdrawal recorded');
+        if (editingId) await accountsService.updateWithdrawal(editingId, payload);
+        else await accountsService.addWithdrawal(payload);
+        toast.success(editingId ? 'Withdrawal updated' : 'Withdrawal recorded');
       }
       resetForm();
       fetchData();
@@ -303,6 +317,8 @@ export default function AccountsPage() {
           onSave={handleSave}
           onReset={resetForm}
           onDelete={(id) => handleDelete('payments', id)}
+          onEdit={startEdit}
+          editingId={editingId}
           formFields={
             <>
               <Select value={form.project || ''} onChange={(e) => setForm({ ...form, project: e.target.value })} options={projectOptions} placeholder="Select Project *" />
@@ -340,6 +356,8 @@ export default function AccountsPage() {
           onSave={handleSave}
           onReset={resetForm}
           onDelete={(id) => handleDelete('expenses', id)}
+          onEdit={startEdit}
+          editingId={editingId}
           formFields={
             <>
               <Select value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} options={EXPENSE_CATEGORIES} placeholder="Category *" />
@@ -387,6 +405,8 @@ export default function AccountsPage() {
           onSave={handleSave}
           onReset={resetForm}
           onDelete={(id) => handleDelete('withdrawals', id)}
+          onEdit={startEdit}
+          editingId={editingId}
           formFields={
             <>
               <Select value={form.person || ''} onChange={(e) => setForm({ ...form, person: e.target.value })} options={FOUNDERS} placeholder="Person *" />
@@ -692,7 +712,7 @@ function RecurringTab({ plans, setPlans, invoices, setInvoices, selectedPlan, se
 }
 
 // Reusable transaction tab layout
-function TransactionTab({ title, records, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, formFields, columns, renderRow }) {
+function TransactionTab({ title, records, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, formFields, columns, renderRow }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -705,10 +725,11 @@ function TransactionTab({ title, records, loading, showForm, setShowForm, form, 
 
       {showForm && (
         <div className="card p-5">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{editingId ? 'Edit' : 'New'} Entry</h4>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">{formFields}</div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="secondary" size="sm" onClick={onReset}>Cancel</Button>
-            <Button size="sm" onClick={onSave} loading={saving}>Save</Button>
+            <Button size="sm" onClick={onSave} loading={saving}>{editingId ? 'Update' : 'Save'}</Button>
           </div>
         </div>
       )}
@@ -731,11 +752,20 @@ function TransactionTab({ title, records, loading, showForm, setShowForm, form, 
                 <tr key={r._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
                   {renderRow(r)}
                   <td className="px-3 py-2.5 text-right">
-                    <button onClick={() => onDelete(r._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      {onEdit && (
+                        <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="Edit">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
+                          </svg>
+                        </button>
+                      )}
+                      <button onClick={() => onDelete(r._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors" title="Delete">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
