@@ -76,7 +76,7 @@ export default function UsersPage() {
   };
 
   const roleBadgeColor = (role) => {
-    const map = { super_admin: 'danger', project_manager: 'primary', developer: 'default' };
+    const map = { super_admin: 'danger', project_manager: 'primary', developer: 'default', sales_executive: 'success' };
     return map[role] || 'default';
   };
 

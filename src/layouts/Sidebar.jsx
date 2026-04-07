@@ -69,6 +69,10 @@ const mainNav = [
   },
 ];
 
+// Sales nav — populated in Phase 2+
+const salesNav = [];
+const SALES_ROLES = [ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE];
+
 const adminNav = [
   {
     name: 'Accounts',
@@ -153,6 +157,10 @@ export default function Sidebar({ collapsed, onToggle }) {
     (item) => !item.roles || item.roles.includes(user?.role)
   );
 
+  const filteredSales = salesNav.filter(
+    (item) => !item.roles || item.roles.includes(user?.role)
+  );
+
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   return (
@@ -194,6 +202,21 @@ export default function Sidebar({ collapsed, onToggle }) {
             <NavItem key={item.path} item={item} isActive={isActive(item.path)} collapsed={collapsed} />
           ))}
         </div>
+
+        {/* Sales section */}
+        {filteredSales.length > 0 && (
+          <>
+            <div className="my-4 border-t border-slate-100 dark:border-slate-800" />
+            {!collapsed && (
+              <p className="px-3 mb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Sales</p>
+            )}
+            <div className="space-y-0.5">
+              {filteredSales.map((item) => (
+                <NavItem key={item.path} item={item} isActive={isActive(item.path)} collapsed={collapsed} />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Admin section */}
         {filteredAdmin.length > 0 && (

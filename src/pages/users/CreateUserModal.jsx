@@ -66,6 +66,7 @@ export default function CreateUserModal({ isOpen, onClose, onCreated }) {
           options={[
             { value: 'developer', label: 'Developer' },
             { value: 'project_manager', label: 'Project Manager' },
+            { value: 'sales_executive', label: 'Sales Executive' },
             { value: 'super_admin', label: 'Super Admin' },
           ]}
         />

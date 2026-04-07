@@ -2,12 +2,14 @@ export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   PROJECT_MANAGER: 'project_manager',
   DEVELOPER: 'developer',
+  SALES_EXECUTIVE: 'sales_executive',
 };
 
 export const ROLE_LABELS = {
   super_admin: 'Super Admin',
   project_manager: 'Project Manager',
   developer: 'Developer',
+  sales_executive: 'Sales Executive',
 };
 
 export const STATUS_LABELS = {
