@@ -31,6 +31,7 @@ const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 const AccountsPage = lazy(() => import('./pages/accounts/AccountsPage'));
 const LeadsPage = lazy(() => import('./pages/leads/LeadsPage'));
 const PipelinePage = lazy(() => import('./pages/leads/PipelinePage'));
+const FollowUpsPage = lazy(() => import('./pages/leads/FollowUpsPage'));
 
 function PageLoader() {
   return (
@@ -105,6 +106,11 @@ export default function App() {
                 <Route path="/pipeline" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
                     <PipelinePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/follow-ups" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <FollowUpsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<SettingsPage />} />

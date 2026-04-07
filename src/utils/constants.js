@@ -72,6 +72,37 @@ export const LEAD_SERVICES = {
   other: 'Other',
 };
 
+export const ACTIVITY_TYPES = {
+  call: 'Call',
+  email: 'Email',
+  meeting: 'Meeting',
+  whatsapp: 'WhatsApp',
+  demo: 'Demo',
+  proposal_discussion: 'Proposal Discussion',
+  negotiation: 'Negotiation',
+  check_in: 'Check-In',
+  other: 'Other',
+};
+
+export const ACTIVITY_OUTCOMES = {
+  interested: 'Interested',
+  not_interested: 'Not Interested',
+  followup_needed: 'Follow-Up Needed',
+  closed: 'Closed',
+};
+
+export const ACTIVITY_TYPE_ICONS = {
+  call: '📞',
+  email: '✉️',
+  meeting: '🤝',
+  whatsapp: '💬',
+  demo: '🖥️',
+  proposal_discussion: '📄',
+  negotiation: '🤝',
+  check_in: '👋',
+  other: '📌',
+};
+
 export const LEAD_LOST_REASONS = {
   price: 'Price',
   timeline: 'Timeline',

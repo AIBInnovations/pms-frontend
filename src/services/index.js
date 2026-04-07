@@ -12,3 +12,4 @@ export { default as reportService } from './report.service';
 export { default as attendanceService } from './attendance.service';
 export { default as accountsService } from './accounts.service';
 export { default as leadService } from './lead.service';
+export { default as salesActivityService } from './salesActivity.service';

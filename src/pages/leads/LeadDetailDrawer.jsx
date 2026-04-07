@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { leadService } from '../../services';
+import LeadActivityTimeline from './LeadActivityTimeline';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, Input, Select, Skeleton } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
@@ -379,6 +380,9 @@ export default function LeadDetailDrawer({ leadId, isOpen, onClose, onUpdated, s
                       {lead.lostReasonNote && <p className="text-xs text-danger-500 mt-1">{lead.lostReasonNote}</p>}
                     </div>
                   )}
+
+                  {/* Activity Timeline */}
+                  <LeadActivityTimeline leadId={leadId} onChange={fetchLead} />
 
                   {/* Internal notes */}
                   <div>
