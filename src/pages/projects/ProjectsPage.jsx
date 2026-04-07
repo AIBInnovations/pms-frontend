@@ -175,7 +175,11 @@ export default function ProjectsPage() {
 
               {/* Bottom row: type + PM */}
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <Badge color="default">{PROJECT_TYPES[project.type] || project.type}</Badge>
+                <div className="flex flex-wrap gap-1">
+                  {(Array.isArray(project.type) ? project.type : [project.type]).filter(Boolean).map((t) => (
+                    <Badge key={t} color="default" size="sm">{PROJECT_TYPES[t] || t}</Badge>
+                  ))}
+                </div>
                 {project.projectManagers?.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <div className="flex -space-x-1.5">

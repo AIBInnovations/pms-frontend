@@ -7,16 +7,15 @@ import { PROJECT_TYPES, PROJECT_DOMAINS, PROJECT_DOMAIN_COLORS } from '../../uti
 const initialForm = {
   name: '',
   description: '',
-  type: '',
+  type: [],
   startDate: '',
   endDate: '',
   budget: '',
+  recurringAmount: '',
   projectManagers: [],
   developers: [],
   domains: [],
 };
-
-const typeOptions = Object.entries(PROJECT_TYPES).map(([value, label]) => ({ value, label }));
 
 export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
   const [form, setForm] = useState(initialForm);
@@ -59,6 +58,14 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
     if (errors[field]) setErrors({ ...errors, [field]: '' });
   };
 
+  const toggleType = (t) => {
+    setForm((prev) => ({
+      ...prev,
+      type: prev.type.includes(t) ? prev.type.filter((x) => x !== t) : [...prev.type, t],
+    }));
+    if (errors.type) setErrors({ ...errors, type: '' });
+  };
+
   const togglePm = (pmId) => {
     setForm((prev) => ({
       ...prev,
@@ -81,7 +88,9 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
   const validate = () => {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = 'Name is required';
-    if (!form.type) newErrors.type = 'Type is required';
+    if (!form.type.length) newErrors.type = 'At least one type is required';
+    if (form.type.includes('retainer') && !form.recurringAmount) newErrors.recurringAmount = 'Recurring amount is required for retainer';
+    if (form.type.includes('fixed_cost') && !form.budget) newErrors.budget = 'Budget is required for fixed cost';
     if (!form.projectManagers.length) newErrors.projectManagers = 'At least one Project Manager is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -140,27 +149,65 @@ export default function CreateProjectModal({ isOpen, onClose, onCreated }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Type <span className="text-red-400">*</span></label>
-              <Select
-                value={form.type}
-                onChange={handleChange('type')}
-                options={typeOptions}
-                placeholder="Select type"
-                error={errors.type}
-              />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Type <span className="text-red-400">*</span>
+              <span className="text-xs font-normal text-slate-400 ml-1">(select one or more)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(PROJECT_TYPES).map(([key, label]) => {
+                const selected = form.type.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleType(key)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                      selected
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
+            {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
+          </div>
+
+          {/* Show budget only if fixed_cost is selected */}
+          {form.type.includes('fixed_cost') && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Budget</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Fixed Cost / Budget (&#8377;) <span className="text-red-400">*</span>
+              </label>
               <Input
                 type="number"
-                placeholder="0.00"
+                placeholder="0"
                 value={form.budget}
                 onChange={handleChange('budget')}
+                error={errors.budget}
               />
             </div>
-          </div>
+          )}
+
+          {/* Show recurring amount only if retainer is selected */}
+          {form.type.includes('retainer') && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Monthly Recurring Amount (&#8377;) <span className="text-red-400">*</span>
+              </label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={form.recurringAmount}
+                onChange={handleChange('recurringAmount')}
+                error={errors.recurringAmount}
+              />
+              <p className="text-xs text-slate-400 mt-1">A recurring payment plan will be auto-created</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>

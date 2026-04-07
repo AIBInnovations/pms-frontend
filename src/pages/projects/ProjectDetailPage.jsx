@@ -592,7 +592,7 @@ export default function ProjectDetailPage() {
     setEditForm({
       name: project.name || '',
       description: project.description || '',
-      type: project.type || '',
+      type: Array.isArray(project.type) ? project.type : (project.type ? [project.type] : []),
       status: project.status || '',
       startDate: toInputDate(project.startDate),
       endDate: toInputDate(project.endDate),
@@ -1387,7 +1387,7 @@ export default function ProjectDetailPage() {
             <div className="card p-5 space-y-3">
               <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Info</h4>
               {[
-                ['Type', PROJECT_TYPES[project.type] || project.type],
+                ['Type', (Array.isArray(project.type) ? project.type : [project.type]).filter(Boolean).map((t) => PROJECT_TYPES[t] || t).join(', ')],
                 ['Status', <Badge key="s" color={PROJECT_STATUS_COLORS[project.status]} size="sm" dot>{PROJECT_STATUSES[project.status]}</Badge>],
                 ['Start', formatDate(project.startDate)],
                 ['End', formatDate(project.endDate)],
