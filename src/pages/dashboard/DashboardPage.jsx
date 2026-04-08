@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { projectService, taskService, userService, activityService } from '../../services';
+import {
+  projectService, taskService, userService, activityService,
+  leadService, salesActivityService, proposalService, targetService, salesAnalyticsService,
+} from '../../services';
 import {
   ROLE_LABELS, TASK_STAGES, TASK_STAGE_COLORS,
   TASK_PRIORITIES, TASK_PRIORITY_COLORS,
@@ -393,6 +396,185 @@ function DevDashboard({ user, navigate, loading, data }) {
 }
 
 // ---------------------------------------------------------------------------
+// SALES EXECUTIVE Dashboard
+// ---------------------------------------------------------------------------
+function fmtMoney(n) { return '₹' + (Number(n) || 0).toLocaleString('en-IN'); }
+function fmtDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  const diff = (target - today) / 86400000;
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+const LEAD_STATUS_COLORS = {
+  new: 'default', contacted: 'primary', qualified: 'primary',
+  proposal_sent: 'warning', negotiation: 'warning', won: 'success', lost: 'danger',
+};
+
+function SalesDashboard({ navigate, loading, data }) {
+  const statCards = [
+    { label: 'Active Leads', value: data.activeLeads || 0, hint: `${data.newLeads || 0} new this month`, accent: true, link: '/leads' },
+    { label: 'Pipeline Value', value: fmtMoney(data.pipelineValue), hint: 'Open deals', link: '/pipeline' },
+    { label: 'Won This Month', value: data.wonThisMonth || 0, hint: fmtMoney(data.revenueThisMonth), link: '/sales-analytics' },
+    { label: 'Conversion Rate', value: `${data.conversionRate || 0}%`, hint: 'Last 6 months', link: '/sales-analytics' },
+  ];
+
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {statCards.map((s) => <StatCard key={s.label} {...s} loading={loading} navigate={navigate} />)}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Today's Follow-ups */}
+        <SectionCard
+          title={`Today's Follow-ups (${(data.todayFollowUps || []).length})`}
+          action={<Button variant="ghost" size="sm" onClick={() => navigate('/follow-ups')}>View all</Button>}
+        >
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} variant="text" />)}</div>
+          ) : (data.todayFollowUps || []).length === 0 ? (
+            <EmptySection
+              icon={<svg className="w-5 h-5 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+              text="No follow-ups for today"
+            />
+          ) : (
+            <div className="space-y-2">
+              {data.todayFollowUps.slice(0, 5).map((a) => (
+                <div
+                  key={a._id}
+                  onClick={() => navigate('/follow-ups')}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{a.lead?.contactName || 'Unknown'}</p>
+                    <p className="text-xs text-slate-500 truncate">{a.nextAction || a.lead?.company}</p>
+                  </div>
+                  <Badge size="sm" color="primary">{fmtDate(a.nextActionDate)}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Overdue Follow-ups */}
+        <SectionCard
+          title={`Overdue (${(data.overdueFollowUps || []).length})`}
+          action={<Button variant="ghost" size="sm" onClick={() => navigate('/follow-ups')}>View all</Button>}
+        >
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} variant="text" />)}</div>
+          ) : (data.overdueFollowUps || []).length === 0 ? (
+            <EmptySection
+              icon={<svg className="w-5 h-5 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+              text="You're all caught up!"
+            />
+          ) : (
+            <div className="space-y-2">
+              {data.overdueFollowUps.slice(0, 5).map((a) => (
+                <div
+                  key={a._id}
+                  onClick={() => navigate('/follow-ups')}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{a.lead?.contactName || 'Unknown'}</p>
+                    <p className="text-xs text-slate-500 truncate">{a.nextAction || a.lead?.company}</p>
+                  </div>
+                  <Badge size="sm" color="danger">{fmtDate(a.nextActionDate)}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* My Recent Leads */}
+        <SectionCard
+          title="My Recent Leads"
+          action={<Button variant="ghost" size="sm" onClick={() => navigate('/leads')}>View all</Button>}
+        >
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} variant="text" />)}</div>
+          ) : (data.myLeads || []).length === 0 ? (
+            <EmptySection
+              icon={<svg className="w-5 h-5 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>}
+              text="No leads yet"
+            />
+          ) : (
+            <div className="space-y-2">
+              {data.myLeads.slice(0, 5).map((lead) => (
+                <div
+                  key={lead._id}
+                  onClick={() => navigate('/leads')}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="font-mono text-xs text-slate-400 mr-2">{lead.leadId}</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300">{lead.contactName}</span>
+                    {lead.company && <span className="text-xs text-slate-400 ml-1">· {lead.company}</span>}
+                  </div>
+                  <Badge size="sm" color={LEAD_STATUS_COLORS[lead.status] || 'default'}>{lead.status?.replace(/_/g, ' ')}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* My Targets */}
+        <SectionCard
+          title="My Target Progress"
+          action={<Button variant="ghost" size="sm" onClick={() => navigate('/targets')}>Details</Button>}
+        >
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} variant="text" />)}</div>
+          ) : (data.targets || []).length === 0 ? (
+            <EmptySection
+              icon={<svg className="w-5 h-5 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
+              text="No targets set for the current period"
+            />
+          ) : (
+            <div className="space-y-3">
+              {data.targets.slice(0, 4).map((item) => {
+                const t = item.target;
+                const p = item.progress;
+                if (!t.revenueTarget) return null;
+                const pct = Math.min(100, p.revenuePct || 0);
+                const tone = pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-primary-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500';
+                return (
+                  <div key={t._id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        {t.type === 'firm' ? 'Firm' : t.user?.name || 'User'} · {t.period}
+                      </p>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{p.revenuePct}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                      <div className={`h-1.5 ${tone} transition-all`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {fmtMoney(p.revenueActual)} / {fmtMoney(p.revenueTarget)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Dashboard Page
 // ---------------------------------------------------------------------------
 export default function DashboardPage() {
@@ -405,6 +587,7 @@ export default function DashboardPage() {
   const role = user?.role;
   const isAdmin = role === 'super_admin';
   const isPM = role === 'project_manager';
+  const isSales = role === 'sales_executive';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -412,7 +595,37 @@ export default function DashboardPage() {
       try {
         const openStages = ['backlog', 'todo', 'in_progress', 'in_review', 'testing'];
 
-        if (isAdmin) {
+        if (isSales) {
+          const [leadsRes, upcomingRes, overdueRes, targetsRes, overviewRes] = await Promise.all([
+            leadService.getAll({ limit: 5, sortBy: 'createdAt', sortOrder: 'desc' }).catch(() => ({ data: [] })),
+            salesActivityService.getUpcoming().catch(() => ({ data: [] })),
+            salesActivityService.getOverdue().catch(() => ({ data: [] })),
+            targetService.getCurrent().catch(() => ({ data: [] })),
+            salesAnalyticsService.getOverview().catch(() => ({ data: null })),
+          ]);
+
+          const upcoming = upcomingRes?.data || [];
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+          const todayFollowUps = upcoming.filter((a) => {
+            const d = new Date(a.nextActionDate);
+            return d >= today && d < tomorrow;
+          });
+
+          const ov = overviewRes?.data || {};
+          setData({
+            myLeads: leadsRes?.data || [],
+            todayFollowUps,
+            overdueFollowUps: overdueRes?.data || [],
+            targets: targetsRes?.data || [],
+            activeLeads: ov.activeLeads,
+            newLeads: ov.newLeads,
+            pipelineValue: ov.pipelineValue,
+            wonThisMonth: ov.wonLeads,
+            revenueThisMonth: ov.revenue,
+            conversionRate: ov.conversionRate,
+          });
+        } else if (isAdmin) {
           const [projectRes, userRes, bugTasksRes, activityRes, ...stageCounts] = await Promise.all([
             projectService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: projects', e), { data: [], meta: { total: 0 } })),
             userService.getAll({ limit: 100 }).catch(e => (console.error('Dashboard: users', e), { data: [], meta: { total: 0 } })),
@@ -513,7 +726,7 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, [user?._id, isAdmin, isPM]);
+  }, [user?._id, isAdmin, isPM, isSales]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -534,6 +747,14 @@ export default function DashboardPage() {
       </Button>
       <Button variant="secondary" size="sm" onClick={() => navigate('/tasks')}>Create Task</Button>
     </>
+  ) : isSales ? (
+    <>
+      <Button size="sm" onClick={() => navigate('/leads')}>
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+        New Lead
+      </Button>
+      <Button variant="secondary" size="sm" onClick={() => navigate('/pipeline')}>Open Pipeline</Button>
+    </>
   ) : (
     <>
       <Button size="sm" onClick={() => navigate('/my-tasks')}>My Tasks</Button>
@@ -545,7 +766,9 @@ export default function DashboardPage() {
     ? 'System overview across all projects and teams.'
     : isPM
       ? 'Track your projects, team, and deliverables.'
-      : 'Your tasks, bugs, and progress at a glance.';
+      : isSales
+        ? 'Your leads, follow-ups, and sales targets at a glance.'
+        : 'Your tasks, bugs, and progress at a glance.';
 
   return (
     <div className="space-y-6 max-w-7xl animate-fade-in">
@@ -564,7 +787,8 @@ export default function DashboardPage() {
 
       {isAdmin && <AdminDashboard navigate={navigate} loading={loading} data={data} />}
       {isPM && <PMDashboard navigate={navigate} loading={loading} data={data} />}
-      {!isAdmin && !isPM && <DevDashboard user={user} navigate={navigate} loading={loading} data={data} />}
+      {isSales && <SalesDashboard navigate={navigate} loading={loading} data={data} />}
+      {!isAdmin && !isPM && !isSales && <DevDashboard user={user} navigate={navigate} loading={loading} data={data} />}
     </div>
   );
 }
