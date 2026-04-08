@@ -39,6 +39,7 @@ const TargetsPage = lazy(() => import('./pages/targets/TargetsPage'));
 const SalesAnalyticsPage = lazy(() => import('./pages/sales-analytics/SalesAnalyticsPage'));
 const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
 const PortalDashboardPage = lazy(() => import('./pages/portal/PortalDashboardPage'));
+const SocialPostsPage = lazy(() => import('./pages/social-posts/SocialPostsPage'));
 
 function PageLoader() {
   return (
@@ -153,6 +154,11 @@ export default function App() {
                 <Route path="/sales-analytics" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
                     <SalesAnalyticsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/social-posts" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <SocialPostsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<SettingsPage />} />
