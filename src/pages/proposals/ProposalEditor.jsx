@@ -35,6 +35,10 @@ export default function ProposalEditor() {
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showVersions, setShowVersions] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendForm, setSendForm] = useState({ recipientEmail: '', subject: '', body: '' });
+  const [sending, setSending] = useState(false);
 
   const [form, setForm] = useState({
     lead: searchParams.get('lead') || '',
@@ -184,6 +188,40 @@ export default function ProposalEditor() {
     } catch { toast.error('Failed'); }
   };
 
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const blob = await proposalService.exportPdf(id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${proposal.proposalNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to generate PDF');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    setSending(true);
+    try {
+      await proposalService.sendEmail(id, sendForm);
+      toast.success('Proposal sent');
+      setShowSendModal(false);
+      setSendForm({ recipientEmail: '', subject: '', body: '' });
+      fetchProposal();
+    } catch (e) {
+      toast.error(e.response?.data?.error?.message || 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleConfirmReject = async () => {
     try {
       await proposalService.updateStatus(id, 'rejected', rejectionReason);
@@ -234,6 +272,29 @@ export default function ProposalEditor() {
             <Button variant="secondary" size="sm" onClick={() => setShowVersions(!showVersions)}>
               History ({proposal.versions.length})
             </Button>
+          )}
+          {!isNew && (
+            <>
+              <Button variant="secondary" size="sm" onClick={handleExportPdf} loading={exportingPdf}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                PDF
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => {
+                setSendForm({
+                  recipientEmail: proposal?.lead?.email || proposal?.client?.contacts?.find((c) => c.isPrimary)?.email || '',
+                  subject: `Proposal: ${proposal?.title || ''}`,
+                  body: `Hi,<br/><br/>Please find attached our proposal for your review. Let me know if you have any questions.<br/><br/>Best regards`,
+                });
+                setShowSendModal(true);
+              }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.125A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.875L5.999 12zm0 0h7.5" />
+                </svg>
+                Send
+              </Button>
+            </>
           )}
           <Button onClick={handleSave} loading={saving}>{isNew ? 'Create' : 'Save'}</Button>
         </div>
@@ -499,6 +560,38 @@ export default function ProposalEditor() {
           )}
         </div>
       </div>
+
+      {/* Send Email modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Send Proposal</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Recipient Email</label>
+                <Input value={sendForm.recipientEmail} onChange={(e) => setSendForm({ ...sendForm, recipientEmail: e.target.value })} placeholder="client@example.com" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Subject</label>
+                <Input value={sendForm.subject} onChange={(e) => setSendForm({ ...sendForm, subject: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Message (HTML supported)</label>
+                <textarea
+                  className="input-base min-h-[120px] resize-none text-sm"
+                  value={sendForm.body}
+                  onChange={(e) => setSendForm({ ...sendForm, body: e.target.value })}
+                />
+              </div>
+              <p className="text-xs text-slate-400">PDF will be attached automatically. Email opens are tracked.</p>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="secondary" size="sm" onClick={() => setShowSendModal(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleSendEmail} loading={sending}>Send</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

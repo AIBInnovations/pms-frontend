@@ -33,6 +33,14 @@ const proposalService = {
     const { data } = await api.get('/proposals/templates');
     return data;
   },
+  async exportPdf(id) {
+    const res = await api.get(`/proposals/${id}/pdf`, { responseType: 'blob' });
+    return res.data;
+  },
+  async sendEmail(id, payload) {
+    const { data } = await api.post(`/proposals/${id}/send`, payload);
+    return data;
+  },
 };
 
 export default proposalService;
