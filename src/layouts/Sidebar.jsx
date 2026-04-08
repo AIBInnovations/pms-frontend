@@ -241,6 +241,10 @@ export default function Sidebar({ collapsed, onToggle }) {
   const { user } = useAuth();
   const location = useLocation();
 
+  const filteredMain = mainNav.filter(
+    (item) => !item.roles || item.roles.includes(user?.role)
+  );
+
   const filteredAdmin = adminNav.filter(
     (item) => !item.roles || item.roles.includes(user?.role)
   );
@@ -286,7 +290,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           <p className="px-3 mb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Workspace</p>
         )}
         <div className="space-y-0.5">
-          {mainNav.map((item) => (
+          {filteredMain.map((item) => (
             <NavItem key={item.path} item={item} isActive={isActive(item.path)} collapsed={collapsed} />
           ))}
         </div>
