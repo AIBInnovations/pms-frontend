@@ -153,6 +153,17 @@ export default function AccountsPage() {
     }
   };
 
+  const handleSettleWithdrawal = async (record) => {
+    try {
+      if (record.settled) await accountsService.unsettleWithdrawal(record._id);
+      else await accountsService.settleWithdrawal(record._id);
+      toast.success(record.settled ? 'Marked as unsettled' : 'Marked as settled');
+      fetchData();
+    } catch {
+      toast.error('Failed to update');
+    }
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'recurring', label: 'Recurring' },
@@ -415,14 +426,28 @@ export default function AccountsPage() {
               <Input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
             </>
           }
-          columns={['Person', 'Amount', 'Date', 'Description']}
+          columns={['Person', 'Amount', 'Date', 'Description', 'Status']}
           renderRow={(r) => (
             <>
               <td className="px-3 py-2.5"><Badge size="sm" color={r.person === 'akshat' ? 'primary' : 'success'}>{r.person === 'akshat' ? 'Akshat' : 'Bhavya'}</Badge></td>
-              <td className="px-3 py-2.5 text-sm font-semibold text-amber-600">{fmt(r.amount)}</td>
+              <td className={`px-3 py-2.5 text-sm font-semibold ${r.settled ? 'text-slate-400 line-through' : 'text-amber-600'}`}>{fmt(r.amount)}</td>
               <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
               <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[250px]">{r.description || '--'}</td>
+              <td className="px-3 py-2.5">
+                {r.settled
+                  ? <Badge size="sm" color="success">Settled{r.settledAt ? ` · ${fmtDate(r.settledAt)}` : ''}</Badge>
+                  : <Badge size="sm" color="warning">Pending</Badge>}
+              </td>
             </>
+          )}
+          extraActions={(r) => (
+            <button
+              onClick={() => handleSettleWithdrawal(r)}
+              className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${r.settled ? 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+              title={r.settled ? 'Mark as unsettled' : 'Mark as settled (amount returned)'}
+            >
+              {r.settled ? 'Unsettle' : 'Settle'}
+            </button>
           )}
         />
       )}
@@ -712,7 +737,7 @@ function RecurringTab({ plans, setPlans, invoices, setInvoices, selectedPlan, se
 }
 
 // Reusable transaction tab layout
-function TransactionTab({ title, records, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, formFields, columns, renderRow }) {
+function TransactionTab({ title, records, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, formFields, columns, renderRow, extraActions }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -753,6 +778,7 @@ function TransactionTab({ title, records, loading, showForm, setShowForm, form, 
                   {renderRow(r)}
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {extraActions && extraActions(r)}
                       {onEdit && (
                         <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="Edit">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

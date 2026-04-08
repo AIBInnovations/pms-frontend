@@ -33,6 +33,10 @@ const leadService = {
     const { data } = await api.delete(`/leads/${id}/notes/${noteId}`);
     return data;
   },
+  async convertToProject(id, overrides = {}) {
+    const { data } = await api.post(`/leads/${id}/convert-to-project`, overrides);
+    return data;
+  },
 };
 
 export default leadService;

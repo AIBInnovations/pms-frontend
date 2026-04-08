@@ -18,6 +18,8 @@ const accountsService = {
   async addWithdrawal(data) { return (await api.post('/accounts/withdrawals', data)).data; },
   async updateWithdrawal(id, data) { return (await api.patch(`/accounts/withdrawals/${id}`, data)).data; },
   async deleteWithdrawal(id) { return (await api.delete(`/accounts/withdrawals/${id}`)).data; },
+  async settleWithdrawal(id) { return (await api.post(`/accounts/withdrawals/${id}/settle`)).data; },
+  async unsettleWithdrawal(id) { return (await api.post(`/accounts/withdrawals/${id}/unsettle`)).data; },
   async getRecurringPlans() { return (await api.get('/accounts/recurring')).data; },
   async addRecurringPlan(data) { return (await api.post('/accounts/recurring', data)).data; },
   async updateRecurringPlan(id, data) { return (await api.patch(`/accounts/recurring/${id}`, data)).data; },

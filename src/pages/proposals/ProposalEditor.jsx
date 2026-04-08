@@ -222,6 +222,18 @@ export default function ProposalEditor() {
     }
   };
 
+  const handleConvertToInvoice = async () => {
+    if (!confirm('Convert this proposal to an invoice / recurring plan?')) return;
+    try {
+      const res = await proposalService.convertToInvoice(id);
+      const created = res.data;
+      const msg = `Created ${created.invoices?.length || 0} invoice(s) and ${created.recurringPlans?.length || 0} recurring plan(s)`;
+      toast.success(msg);
+    } catch (e) {
+      toast.error(e.response?.data?.error?.message || 'Failed to convert');
+    }
+  };
+
   const handleConfirmReject = async () => {
     try {
       await proposalService.updateStatus(id, 'rejected', rejectionReason);
@@ -271,6 +283,11 @@ export default function ProposalEditor() {
           {!isNew && proposal?.versions?.length > 0 && (
             <Button variant="secondary" size="sm" onClick={() => setShowVersions(!showVersions)}>
               History ({proposal.versions.length})
+            </Button>
+          )}
+          {!isNew && proposal?.status === 'accepted' && (
+            <Button variant="secondary" size="sm" onClick={handleConvertToInvoice}>
+              Convert to Invoice
             </Button>
           )}
           {!isNew && (

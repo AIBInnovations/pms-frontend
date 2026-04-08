@@ -1464,6 +1464,15 @@ export default function ProjectDetailPage() {
                 ))}
               </div>
             )}
+
+            {project.linkedLead && (
+              <div className="card p-4">
+                <p className="text-xs text-slate-400 mb-1">Originated From</p>
+                <a href="/leads" className="text-sm font-medium text-primary-600 hover:underline">
+                  Lead {project.linkedLead.leadId || project.linkedLead}
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>

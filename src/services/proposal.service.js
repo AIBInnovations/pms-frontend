@@ -41,6 +41,10 @@ const proposalService = {
     const { data } = await api.post(`/proposals/${id}/send`, payload);
     return data;
   },
+  async convertToInvoice(id, projectId) {
+    const { data } = await api.post(`/proposals/${id}/convert-to-invoice`, { projectId });
+    return data;
+  },
 };
 
 export default proposalService;

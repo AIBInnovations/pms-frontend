@@ -153,6 +153,20 @@ export default function LeadDetailDrawer({ leadId, isOpen, onClose, onUpdated, s
     } catch { toast.error('Failed to delete'); }
   };
 
+  const handleConvertToProject = async () => {
+    if (!confirm(`Convert "${lead.contactName}" into a new project?`)) return;
+    try {
+      const res = await leadService.convertToProject(leadId);
+      toast.success('Converted to project');
+      fetchLead();
+      onUpdated?.();
+      // Navigate to the new project
+      window.location.href = `/projects/${res.data.project._id}`;
+    } catch (e) {
+      toast.error(e.response?.data?.error?.message || 'Failed to convert');
+    }
+  };
+
   if (!isOpen) return null;
 
   const statusOptions = Object.entries(LEAD_STATUSES).map(([v, l]) => ({ value: v, label: l }));
@@ -249,6 +263,24 @@ export default function LeadDetailDrawer({ leadId, isOpen, onClose, onUpdated, s
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Convert to Project (only for won leads) */}
+              {!editing && lead.status === 'won' && !lead.convertedProject && (
+                <div className="card p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                  <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-1">🎉 Lead Won!</h4>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-500 mb-3">Convert this lead to a project to start tracking work and payments.</p>
+                  <Button size="sm" onClick={handleConvertToProject}>Convert to Project</Button>
+                </div>
+              )}
+
+              {!editing && lead.convertedProject && (
+                <div className="card p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800">
+                  <h4 className="text-xs font-semibold text-primary-700 dark:text-primary-400 uppercase mb-1">Linked Project</h4>
+                  <a href={`/projects/${lead.convertedProject._id || lead.convertedProject}`} className="text-sm text-primary-600 hover:underline">
+                    {lead.convertedProject.code ? `${lead.convertedProject.code} — ${lead.convertedProject.name}` : 'View project →'}
+                  </a>
                 </div>
               )}
 
