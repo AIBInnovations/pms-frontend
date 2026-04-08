@@ -98,6 +98,9 @@ function DocumentsTab({ projectId, navigate }) {
   };
 
   const getFileIcon = (doc) => {
+    if (doc.type === 'excalidraw') {
+      return { icon: 'M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42', color: 'text-purple-500 bg-purple-50 dark:bg-purple-900/30' };
+    }
     if (doc.fileUrl) {
       const ext = doc.fileName?.split('.').pop()?.toLowerCase();
       if (['pdf'].includes(ext)) return { icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', color: 'text-red-500 bg-red-50 dark:bg-red-900/30' };
@@ -122,6 +125,10 @@ function DocumentsTab({ projectId, navigate }) {
           <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} loading={uploading}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
             Upload File
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => navigate(`/documents/excalidraw/new?project=${projectId}`)}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" /></svg>
+            New Diagram
           </Button>
           <Button size="sm" onClick={() => navigate(`/documents/new?project=${projectId}`)}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
@@ -169,7 +176,11 @@ function DocumentsTab({ projectId, navigate }) {
             return (
               <div
                 key={doc._id}
-                onClick={() => isFile ? window.open(doc.fileUrl, '_blank') : navigate(`/documents/${doc._id}`)}
+                onClick={() => {
+                  if (doc.type === 'excalidraw') navigate(`/documents/excalidraw/${doc._id}`);
+                  else if (isFile) window.open(doc.fileUrl, '_blank');
+                  else navigate(`/documents/${doc._id}`);
+                }}
                 className="card p-4 cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
               >
                 <div className="flex items-start gap-3">

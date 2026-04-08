@@ -61,6 +61,11 @@ export default function DocumentEditor() {
       try {
         const response = await documentService.getById(id);
         const data = response.data;
+        // Excalidraw docs render in their own editor
+        if (data.type === 'excalidraw') {
+          navigate(`/documents/excalidraw/${id}`, { replace: true });
+          return;
+        }
         setDoc(data);
         setTitle(data.title || '');
         setContent(data.content || '');

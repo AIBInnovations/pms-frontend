@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.0",
     "@tailwindcss/vite": "^4.2.1",
     "axios": "^1.13.6",
     "react": "^19.2.0",

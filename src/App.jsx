@@ -22,6 +22,7 @@ const TasksPage = lazy(() => import('./pages/tasks/TasksPage'));
 const BugsPage = lazy(() => import('./pages/bugs/BugsPage'));
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'));
 const DocumentEditor = lazy(() => import('./pages/documents/DocumentEditor'));
+const ExcalidrawEditor = lazy(() => import('./pages/documents/ExcalidrawEditor'));
 const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const MyTasksPage = lazy(() => import('./pages/tasks/MyTasksPage'));
@@ -124,6 +125,16 @@ export default function App() {
                 <Route path="/documents/:id" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
                     <DocumentEditor />
+                  </ProtectedRoute>
+                } />
+                <Route path="/documents/excalidraw/new" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <ExcalidrawEditor />
+                  </ProtectedRoute>
+                } />
+                <Route path="/documents/excalidraw/:id" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <ExcalidrawEditor />
                   </ProtectedRoute>
                 } />
                 <Route path="/notifications" element={<NotificationsPage />} />
