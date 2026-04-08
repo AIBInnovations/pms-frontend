@@ -405,6 +405,32 @@ export default function LeadDetailDrawer({ leadId, isOpen, onClose, onUpdated, s
                     </div>
                   )}
 
+                  {(lead.postLink || lead.conversationLink || lead.proposalNote) && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Outreach</h4>
+                      <div className="card p-3 space-y-2">
+                        {lead.postLink && (
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase">Project / Post</p>
+                            <a href={lead.postLink} target="_blank" rel="noreferrer" className="text-xs text-primary-600 hover:underline break-all">{lead.postLink}</a>
+                          </div>
+                        )}
+                        {lead.conversationLink && (
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase">Conversation</p>
+                            <a href={lead.conversationLink} target="_blank" rel="noreferrer" className="text-xs text-primary-600 hover:underline break-all">{lead.conversationLink}</a>
+                          </div>
+                        )}
+                        {lead.proposalNote && (
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase">Proposal</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{lead.proposalNote}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {lead.status === 'lost' && lead.lostReason && (
                     <div className="card p-3 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
                       <h4 className="text-xs font-semibold text-danger-700 uppercase mb-1">Lost Reason</h4>

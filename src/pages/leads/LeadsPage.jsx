@@ -8,6 +8,7 @@ import {
 } from '../../utils/constants';
 import CreateLeadModal from './CreateLeadModal';
 import LeadDetailDrawer from './LeadDetailDrawer';
+import ImportLeadsModal from './ImportLeadsModal';
 
 function fmtDate(d) {
   if (!d) return '--';
@@ -30,6 +31,7 @@ export default function LeadsPage() {
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [salesUsers, setSalesUsers] = useState([]);
 
@@ -80,12 +82,20 @@ export default function LeadsPage() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your sales pipeline</p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          New Lead
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowImport(true)}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Import CSV
+          </Button>
+          <Button onClick={() => setShowCreate(true)}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Lead
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -197,6 +207,12 @@ export default function LeadsPage() {
         onClose={() => setSelectedLeadId(null)}
         onUpdated={fetchLeads}
         salesUsers={salesUsers}
+      />
+
+      <ImportLeadsModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={() => { setShowImport(false); fetchLeads(); }}
       />
     </div>
   );

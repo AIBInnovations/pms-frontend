@@ -37,6 +37,22 @@ const leadService = {
     const { data } = await api.post(`/leads/${id}/convert-to-project`, overrides);
     return data;
   },
+  async previewImport(file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const { data } = await api.post('/leads/import/preview', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+  async commitImport(file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const { data } = await api.post('/leads/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
 };
 
 export default leadService;
