@@ -16,3 +16,4 @@ export { default as salesActivityService } from './salesActivity.service';
 export { default as clientService } from './client.service';
 export { default as proposalService } from './proposal.service';
 export { default as emailTemplateService } from './emailTemplate.service';
+export { default as targetService } from './target.service';

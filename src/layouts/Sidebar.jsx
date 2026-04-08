@@ -122,6 +122,16 @@ const salesNav = [
       </svg>
     ),
   },
+  {
+    name: 'Targets',
+    path: '/targets',
+    roles: SALES_ROLES,
+    icon: (
+      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-5a5 5 0 100 10 5 5 0 000-10z" />
+      </svg>
+    ),
+  },
 ];
 
 const adminNav = [
