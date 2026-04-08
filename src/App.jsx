@@ -37,6 +37,8 @@ const ProposalsPage = lazy(() => import('./pages/proposals/ProposalsPage'));
 const ProposalEditor = lazy(() => import('./pages/proposals/ProposalEditor'));
 const TargetsPage = lazy(() => import('./pages/targets/TargetsPage'));
 const SalesAnalyticsPage = lazy(() => import('./pages/sales-analytics/SalesAnalyticsPage'));
+const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
+const PortalDashboardPage = lazy(() => import('./pages/portal/PortalDashboardPage'));
 
 function PageLoader() {
   return (
@@ -61,6 +63,11 @@ export default function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/force-reset-password" element={<ForceResetPasswordPage />} />
+
+              {/* Client Portal (separate from main app) */}
+              <Route path="/portal/login" element={<PortalLoginPage />} />
+              <Route path="/portal/dashboard" element={<PortalDashboardPage />} />
+              <Route path="/portal" element={<Navigate to="/portal/login" replace />} />
 
               {/* Protected routes */}
               <Route

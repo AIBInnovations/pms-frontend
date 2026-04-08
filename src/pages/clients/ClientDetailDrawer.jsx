@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { clientService } from '../../services';
+import { clientService, portalService } from '../../services';
 import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Badge, Avatar, Input, Select, Skeleton } from '../../components/ui';
@@ -27,6 +27,7 @@ export default function ClientDetailDrawer({ clientId, isOpen, onClose, onUpdate
   const [saving, setSaving] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [portalUrl, setPortalUrl] = useState('');
 
   const isAdmin = user?.role === 'super_admin';
 
@@ -298,6 +299,67 @@ export default function ClientDetailDrawer({ clientId, isOpen, onClose, onUpdate
                             <Badge size="sm" color="default">{p.status}</Badge>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Portal Access (admin only) */}
+                  {isAdmin && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Client Portal Access</h4>
+                      <div className="card p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            Status: <span className={client.portalEnabled ? 'text-emerald-600 font-medium' : 'text-slate-400'}>
+                              {client.portalEnabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const res = await portalService.enableAccess(client._id);
+                                  const url = `${window.location.origin}${res.data.accessUrl}`;
+                                  setPortalUrl(url);
+                                  toast.success('Portal access generated');
+                                  fetchClient();
+                                } catch { toast.error('Failed to enable portal'); }
+                              }}
+                              className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                            >
+                              {client.portalEnabled ? 'Regenerate Link' : 'Enable & Generate Link'}
+                            </button>
+                            {client.portalEnabled && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await portalService.disableAccess(client._id);
+                                    setPortalUrl('');
+                                    toast.success('Portal disabled');
+                                    fetchClient();
+                                  } catch { toast.error('Failed to disable'); }
+                                }}
+                                className="text-xs text-red-600 hover:text-red-700 font-medium"
+                              >
+                                Disable
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {portalUrl && (
+                          <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded text-[11px] font-mono break-all flex items-center gap-2">
+                            <span className="flex-1">{portalUrl}</span>
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success('Copied'); }}
+                              className="text-primary-600 hover:text-primary-700 shrink-0"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        )}
+                        {client.portalLastLogin && (
+                          <p className="text-[10px] text-slate-400">Last login: {fmtDate(client.portalLastLogin)}</p>
+                        )}
                       </div>
                     </div>
                   )}
