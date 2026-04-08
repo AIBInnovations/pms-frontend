@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { Avatar } from '../components/ui';
 import { ROLES, ROLE_LABELS } from '../utils/constants';
 
+const OPS_ROLES = [ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER];
+
 const mainNav = [
   {
     name: 'Dashboard',
@@ -16,6 +18,7 @@ const mainNav = [
   {
     name: 'Projects',
     path: '/projects',
+    roles: OPS_ROLES,
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
@@ -25,6 +28,7 @@ const mainNav = [
   {
     name: 'Tasks',
     path: '/tasks',
+    roles: OPS_ROLES,
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -34,6 +38,7 @@ const mainNav = [
   {
     name: 'My Tasks',
     path: '/my-tasks',
+    roles: OPS_ROLES,
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -43,6 +48,7 @@ const mainNav = [
   {
     name: 'Bugs',
     path: '/bugs',
+    roles: OPS_ROLES,
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0112 12.75zm0 0c2.883 0 5.647.508 8.207 1.44a23.91 23.91 0 01-1.152-6.135c-.22-2.058-.988-3.93-2.116-5.362A14.98 14.98 0 0012 .75a14.98 14.98 0 00-4.94 2.693C5.933 4.874 5.165 6.747 4.945 8.805a23.91 23.91 0 01-1.152 6.135A24.373 24.373 0 0112 12.75z" />
@@ -52,6 +58,7 @@ const mainNav = [
   {
     name: 'Documents',
     path: '/documents',
+    roles: OPS_ROLES,
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />

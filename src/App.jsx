@@ -88,18 +88,50 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
-                {/* Phase 2 — Projects & Tasks */}
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                <Route path="/tasks" element={<TasksPage />} />
+                {/* Phase 2 — Projects & Tasks (ops roles only, not sales_executive) */}
+                <Route path="/projects" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <ProjectsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/projects/:id" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <ProjectDetailPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tasks" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <TasksPage />
+                  </ProtectedRoute>
+                } />
                 {/* Phase 3 — Bugs */}
-                <Route path="/bugs" element={<BugsPage />} />
+                <Route path="/bugs" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <BugsPage />
+                  </ProtectedRoute>
+                } />
                 {/* Phase 4 — Documents */}
-                <Route path="/documents" element={<DocumentsPage />} />
-                <Route path="/documents/new" element={<DocumentEditor />} />
-                <Route path="/documents/:id" element={<DocumentEditor />} />
+                <Route path="/documents" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <DocumentsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/documents/new" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <DocumentEditor />
+                  </ProtectedRoute>
+                } />
+                <Route path="/documents/:id" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <DocumentEditor />
+                  </ProtectedRoute>
+                } />
                 <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/my-tasks" element={<MyTasksPage />} />
+                <Route path="/my-tasks" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER]}>
+                    <MyTasksPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/reports" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER]}>
