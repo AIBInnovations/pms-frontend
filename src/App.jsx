@@ -36,6 +36,7 @@ const ClientsPage = lazy(() => import('./pages/clients/ClientsPage'));
 const ProposalsPage = lazy(() => import('./pages/proposals/ProposalsPage'));
 const ProposalEditor = lazy(() => import('./pages/proposals/ProposalEditor'));
 const TargetsPage = lazy(() => import('./pages/targets/TargetsPage'));
+const SalesAnalyticsPage = lazy(() => import('./pages/sales-analytics/SalesAnalyticsPage'));
 
 function PageLoader() {
   return (
@@ -140,6 +141,11 @@ export default function App() {
                 <Route path="/targets" element={
                   <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
                     <TargetsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/sales-analytics" element={
+                  <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.SALES_EXECUTIVE]}>
+                    <SalesAnalyticsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<SettingsPage />} />
