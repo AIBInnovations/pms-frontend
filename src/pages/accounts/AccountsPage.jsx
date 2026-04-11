@@ -267,7 +267,7 @@ export default function AccountsPage() {
                       <thead>
                         <tr className="border-b border-slate-100 dark:border-slate-700">
                           <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Project</th>
-                          <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Budget</th>
+                          <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Expected</th>
                           <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Received</th>
                           <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Receivable</th>
                         </tr>
@@ -276,7 +276,7 @@ export default function AccountsPage() {
                         {receivables.map((r) => (
                           <tr key={r.project._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
                             <td className="px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300">{r.project.code} — {r.project.name}</td>
-                            <td className="px-3 py-2.5 text-sm text-right text-slate-500">{fmt(r.budget)}</td>
+                            <td className="px-3 py-2.5 text-sm text-right text-slate-500">{fmt(r.expected)}</td>
                             <td className="px-3 py-2.5 text-sm text-right text-emerald-600 font-semibold">{fmt(r.received)}</td>
                             <td className="px-3 py-2.5 text-sm text-right font-semibold">
                               <span className={r.receivable > 0 ? 'text-amber-600' : 'text-emerald-600'}>{fmt(r.receivable)}</span>
@@ -285,7 +285,7 @@ export default function AccountsPage() {
                         ))}
                         <tr className="bg-slate-50 dark:bg-slate-800 font-semibold">
                           <td className="px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300">Total</td>
-                          <td className="px-3 py-2.5 text-sm text-right">{fmt(receivables.reduce((s, r) => s + r.budget, 0))}</td>
+                          <td className="px-3 py-2.5 text-sm text-right">{fmt(receivables.reduce((s, r) => s + (r.expected || 0), 0))}</td>
                           <td className="px-3 py-2.5 text-sm text-right text-emerald-600">{fmt(receivables.reduce((s, r) => s + r.received, 0))}</td>
                           <td className="px-3 py-2.5 text-sm text-right text-amber-600">{fmt(receivables.reduce((s, r) => s + r.receivable, 0))}</td>
                         </tr>
