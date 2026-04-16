@@ -3,6 +3,7 @@ import { attendanceService } from '../../services';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/Toast';
 import { Button, Badge, Avatar, Skeleton } from '../../components/ui';
+import UserAttendanceDrawer from './UserAttendanceDrawer';
 
 function formatTime(dateStr) {
   if (!dateStr) return '--';
@@ -45,6 +46,7 @@ export default function AttendancePage() {
   const [allUsersSummary, setAllUsersSummary] = useState([]);
   const [loadingAllUsers, setLoadingAllUsers] = useState(false);
   const [adminMonth, setAdminMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const fetchToday = useCallback(async () => {
     setLoadingToday(true);
@@ -327,12 +329,16 @@ export default function AttendancePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {allUsersSummary.map((s) => (
-                    <tr key={s.user?._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                    <tr
+                      key={s.user?._id}
+                      onClick={() => setSelectedUser(s.user)}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 cursor-pointer"
+                    >
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={s.user?.name} src={s.user?.avatar} size="sm" />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{s.user?.name}</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate hover:text-primary-600">{s.user?.name}</p>
                             <p className="text-xs text-slate-400 truncate">{s.user?.email}</p>
                           </div>
                         </div>
@@ -392,12 +398,16 @@ export default function AttendancePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {todayAll.map((r) => (
-                    <tr key={r._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                    <tr
+                      key={r._id}
+                      onClick={() => setSelectedUser(r.user)}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 cursor-pointer"
+                    >
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={r.user?.name} src={r.user?.avatar} size="sm" />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{r.user?.name}</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate hover:text-primary-600">{r.user?.name}</p>
                             <p className="text-xs text-slate-400 truncate">{r.user?.email}</p>
                           </div>
                         </div>
@@ -420,6 +430,13 @@ export default function AttendancePage() {
           )}
         </div>
       )}
+
+      <UserAttendanceDrawer
+        user={selectedUser}
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        initialMonth={adminMonth}
+      />
     </div>
   );
 }
