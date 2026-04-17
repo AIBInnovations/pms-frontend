@@ -355,9 +355,8 @@ export default function AccountsPage() {
 
       {/* Expenses Tab */}
       {tab === 'expenses' && (
-        <TransactionTab
-          title="Expenses"
-          records={expenses}
+        <ExpensesTab
+          expenses={expenses}
           loading={loading}
           showForm={showForm}
           setShowForm={setShowForm}
@@ -369,25 +368,8 @@ export default function AccountsPage() {
           onDelete={(id) => handleDelete('expenses', id)}
           onEdit={startEdit}
           editingId={editingId}
-          formFields={
-            <>
-              <Select value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} options={EXPENSE_CATEGORIES} placeholder="Category *" />
-              <Input type="number" value={form.amount || ''} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Amount *" />
-              <Input type="date" value={form.date || ''} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-              <Input value={form.paidTo || ''} onChange={(e) => setForm({ ...form, paidTo: e.target.value })} placeholder="Paid To" />
-              <Input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
-            </>
-          }
-          columns={['Category', 'Amount', 'Date', 'Paid To', 'Description']}
-          renderRow={(r) => (
-            <>
-              <td className="px-3 py-2.5"><Badge size="sm" color="warning">{EXPENSE_CATEGORIES.find((c) => c.value === r.category)?.label || r.category}</Badge></td>
-              <td className="px-3 py-2.5 text-sm font-semibold text-red-500">{fmt(r.amount)}</td>
-              <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
-              <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{r.paidTo || '--'}</td>
-              <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[200px]">{r.description || '--'}</td>
-            </>
-          )}
+          fetchData={fetchData}
+          toast={toast}
         />
       )}
 
@@ -404,9 +386,8 @@ export default function AccountsPage() {
 
       {/* Withdrawals Tab */}
       {tab === 'withdrawals' && (
-        <TransactionTab
-          title="Founder Withdrawals"
-          records={withdrawals}
+        <WithdrawalsTab
+          withdrawals={withdrawals}
           loading={loading}
           showForm={showForm}
           setShowForm={setShowForm}
@@ -418,37 +399,7 @@ export default function AccountsPage() {
           onDelete={(id) => handleDelete('withdrawals', id)}
           onEdit={startEdit}
           editingId={editingId}
-          formFields={
-            <>
-              <Select value={form.person || ''} onChange={(e) => setForm({ ...form, person: e.target.value })} options={FOUNDERS} placeholder="Person *" />
-              <Input type="number" value={form.amount || ''} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Amount *" />
-              <Input type="date" value={form.date || ''} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-              <Input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
-            </>
-          }
-          columns={['Person', 'Amount', 'Date', 'Description', 'Status']}
-          renderRow={(r) => (
-            <>
-              <td className="px-3 py-2.5"><Badge size="sm" color={r.person === 'akshat' ? 'primary' : 'success'}>{r.person === 'akshat' ? 'Akshat' : 'Bhavya'}</Badge></td>
-              <td className={`px-3 py-2.5 text-sm font-semibold ${r.settled ? 'text-slate-400 line-through' : 'text-amber-600'}`}>{fmt(r.amount)}</td>
-              <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
-              <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[250px]">{r.description || '--'}</td>
-              <td className="px-3 py-2.5">
-                {r.settled
-                  ? <Badge size="sm" color="success">Settled{r.settledAt ? ` · ${fmtDate(r.settledAt)}` : ''}</Badge>
-                  : <Badge size="sm" color="warning">Pending</Badge>}
-              </td>
-            </>
-          )}
-          extraActions={(r) => (
-            <button
-              onClick={() => handleSettleWithdrawal(r)}
-              className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${r.settled ? 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
-              title={r.settled ? 'Mark as unsettled' : 'Mark as settled (amount returned)'}
-            >
-              {r.settled ? 'Unsettle' : 'Settle'}
-            </button>
-          )}
+          onSettle={handleSettleWithdrawal}
         />
       )}
     </div>
@@ -737,7 +688,7 @@ function RecurringTab({ plans, setPlans, invoices, setInvoices, selectedPlan, se
 }
 
 // Reusable transaction tab layout
-function TransactionTab({ title, records, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, formFields, columns, renderRow, extraActions }) {
+function TransactionTab({ title, records, loading, showForm, setShowForm, saving, onSave, onReset, onDelete, onEdit, editingId, formFields, columns, renderRow, extraActions }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -795,6 +746,282 @@ function TransactionTab({ title, records, loading, showForm, setShowForm, form, 
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Expenses Tab with Quick-Add ──────────────────────
+function ExpensesTab({ expenses, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, fetchData, toast }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [quick, setQuick] = useState({ category: '', amount: '', date: todayStr, paidTo: '', description: '' });
+  const [quickSaving, setQuickSaving] = useState(false);
+
+  const handleQuickAdd = async () => {
+    if (!quick.category || !quick.amount) { toast.error('Category and amount are required'); return; }
+    setQuickSaving(true);
+    try {
+      await accountsService.addExpense({ ...quick, amount: Number(quick.amount), date: quick.date || todayStr });
+      toast.success('Expense added');
+      setQuick({ category: '', amount: '', date: todayStr, paidTo: '', description: '' });
+      fetchData();
+    } catch {
+      toast.error('Failed to add expense');
+    } finally {
+      setQuickSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Expenses <span className="text-slate-400 font-normal">{expenses.length}</span></h3>
+        <Button size="sm" variant="secondary" onClick={() => { onReset(); setShowForm(true); }}>
+          Full Form
+        </Button>
+      </div>
+
+      {/* Quick-add inline row */}
+      <div className="card p-3">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase mb-2">Quick Add</p>
+        <div className="flex items-end gap-2 flex-wrap">
+          <div className="w-40">
+            <Select value={quick.category} onChange={(e) => setQuick({ ...quick, category: e.target.value })} options={EXPENSE_CATEGORIES} placeholder="Category *" />
+          </div>
+          <div className="w-28">
+            <Input type="number" value={quick.amount} onChange={(e) => setQuick({ ...quick, amount: e.target.value })} placeholder="Amount *" />
+          </div>
+          <div className="w-36">
+            <Input type="date" value={quick.date} onChange={(e) => setQuick({ ...quick, date: e.target.value })} />
+          </div>
+          <div className="w-32">
+            <Input value={quick.paidTo} onChange={(e) => setQuick({ ...quick, paidTo: e.target.value })} placeholder="Paid To" />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+            <Input value={quick.description} onChange={(e) => setQuick({ ...quick, description: e.target.value })} placeholder="Description"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd(); }} />
+          </div>
+          <Button size="sm" onClick={handleQuickAdd} disabled={quickSaving}>
+            {quickSaving ? '...' : '+ Add'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Full form (expandable, for editing) */}
+      {showForm && (
+        <div className="card p-5">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{editingId ? 'Edit' : 'New'} Expense</h4>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Select value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} options={EXPENSE_CATEGORIES} placeholder="Category *" />
+            <Input type="number" value={form.amount || ''} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Amount *" />
+            <Input type="date" value={form.date || ''} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <Input value={form.paidTo || ''} onChange={(e) => setForm({ ...form, paidTo: e.target.value })} placeholder="Paid To" />
+            <Input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="secondary" size="sm" onClick={onReset}>Cancel</Button>
+            <Button size="sm" onClick={onSave} loading={saving}>{editingId ? 'Update' : 'Save'}</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map((i) => <Skeleton key={i} variant="text" className="h-12" />)}</div>
+      ) : expenses.length === 0 ? (
+        <EmptyState title="No expenses" description="Use the quick-add bar above to record an expense." />
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Category</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Amount</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Date</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Paid To</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Description</th>
+                <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {expenses.map((r) => (
+                <tr key={r._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                  <td className="px-3 py-2.5"><Badge size="sm" color="warning">{EXPENSE_CATEGORIES.find((c) => c.value === r.category)?.label || r.category}</Badge></td>
+                  <td className="px-3 py-2.5 text-sm font-semibold text-red-500">{fmt(r.amount)}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-600 dark:text-slate-400">{r.paidTo || '--'}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[200px]">{r.description || '--'}</td>
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="Edit">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" /></svg>
+                      </button>
+                      <button onClick={() => onDelete(r._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors" title="Delete">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Withdrawals Tab (split by person) ───────────────
+function WithdrawalsTab({ withdrawals, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, onSettle }) {
+  const [personFilter, setPersonFilter] = useState('all');
+
+  const akshatPending = withdrawals.filter((w) => w.person === 'akshat' && !w.settled).reduce((s, w) => s + w.amount, 0);
+  const bhavyaPending = withdrawals.filter((w) => w.person === 'bhavya' && !w.settled).reduce((s, w) => s + w.amount, 0);
+  const akshatSettled = withdrawals.filter((w) => w.person === 'akshat' && w.settled).reduce((s, w) => s + w.amount, 0);
+  const bhavyaSettled = withdrawals.filter((w) => w.person === 'bhavya' && w.settled).reduce((s, w) => s + w.amount, 0);
+
+  const filtered = personFilter === 'all' ? withdrawals : withdrawals.filter((w) => w.person === personFilter);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary cards per person */}
+      <div className="grid grid-cols-2 gap-4">
+        <div
+          className={`card p-4 cursor-pointer transition-all ${personFilter === 'akshat' ? 'ring-2 ring-primary-500' : 'hover:shadow-sm'}`}
+          onClick={() => setPersonFilter(personFilter === 'akshat' ? 'all' : 'akshat')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Badge size="sm" color="primary">Akshat</Badge>
+              {personFilter === 'akshat' && <span className="text-[10px] text-primary-500">Filtered</span>}
+            </div>
+            <span className="text-[10px] text-slate-400">{withdrawals.filter((w) => w.person === 'akshat').length} entries</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase">Pending</p>
+              <p className="text-xl font-bold text-amber-600">{fmt(akshatPending)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-slate-500 uppercase">Settled</p>
+              <p className="text-sm font-semibold text-emerald-600">{fmt(akshatSettled)}</p>
+            </div>
+          </div>
+        </div>
+        <div
+          className={`card p-4 cursor-pointer transition-all ${personFilter === 'bhavya' ? 'ring-2 ring-emerald-500' : 'hover:shadow-sm'}`}
+          onClick={() => setPersonFilter(personFilter === 'bhavya' ? 'all' : 'bhavya')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Badge size="sm" color="success">Bhavya</Badge>
+              {personFilter === 'bhavya' && <span className="text-[10px] text-emerald-500">Filtered</span>}
+            </div>
+            <span className="text-[10px] text-slate-400">{withdrawals.filter((w) => w.person === 'bhavya').length} entries</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase">Pending</p>
+              <p className="text-xl font-bold text-amber-600">{fmt(bhavyaPending)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-slate-500 uppercase">Settled</p>
+              <p className="text-sm font-semibold text-emerald-600">{fmt(bhavyaSettled)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {personFilter === 'all' ? 'All Withdrawals' : `${personFilter === 'akshat' ? 'Akshat' : 'Bhavya'}'s Withdrawals`}
+          <span className="text-slate-400 font-normal ml-2">{filtered.length}</span>
+        </h3>
+        <div className="flex items-center gap-2">
+          {personFilter !== 'all' && (
+            <button onClick={() => setPersonFilter('all')} className="text-xs text-slate-500 hover:text-primary-600">Show All</button>
+          )}
+          <Button size="sm" onClick={() => { onReset(); setShowForm(true); }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Add
+          </Button>
+        </div>
+      </div>
+
+      {/* Form */}
+      {showForm && (
+        <div className="card p-5">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{editingId ? 'Edit' : 'New'} Withdrawal</h4>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Select value={form.person || ''} onChange={(e) => setForm({ ...form, person: e.target.value })} options={FOUNDERS} placeholder="Person *" />
+            <Input type="number" value={form.amount || ''} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Amount *" />
+            <Input type="date" value={form.date || ''} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <Input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="secondary" size="sm" onClick={onReset}>Cancel</Button>
+            <Button size="sm" onClick={onSave} loading={saving}>{editingId ? 'Update' : 'Save'}</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map((i) => <Skeleton key={i} variant="text" className="h-12" />)}</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState title="No withdrawals" description={personFilter !== 'all' ? `No withdrawals for ${personFilter}` : 'Click Add to record a withdrawal.'} />
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Person</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Amount</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Date</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Description</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase px-3 py-2">Status</th>
+                <th className="text-right text-xs font-medium text-slate-500 uppercase px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {filtered.map((r) => (
+                <tr key={r._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                  <td className="px-3 py-2.5"><Badge size="sm" color={r.person === 'akshat' ? 'primary' : 'success'}>{r.person === 'akshat' ? 'Akshat' : 'Bhavya'}</Badge></td>
+                  <td className={`px-3 py-2.5 text-sm font-semibold ${r.settled ? 'text-slate-400 line-through' : 'text-amber-600'}`}>{fmt(r.amount)}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[250px]">{r.description || '--'}</td>
+                  <td className="px-3 py-2.5">
+                    {r.settled
+                      ? <Badge size="sm" color="success">Settled{r.settledAt ? ` · ${fmtDate(r.settledAt)}` : ''}</Badge>
+                      : <Badge size="sm" color="warning">Pending</Badge>}
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => onSettle(r)}
+                        className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${r.settled ? 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                      >
+                        {r.settled ? 'Unsettle' : 'Settle'}
+                      </button>
+                      <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="Edit">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" /></svg>
+                      </button>
+                      <button onClick={() => onDelete(r._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors" title="Delete">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-slate-50 dark:bg-slate-800 font-semibold">
+                <td className="px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300">Total Pending</td>
+                <td className="px-3 py-2.5 text-sm text-amber-600">{fmt(filtered.reduce((s, w) => s + (w.settled ? 0 : w.amount), 0))}</td>
+                <td colSpan={4} />
+              </tr>
             </tbody>
           </table>
         </div>
