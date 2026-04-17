@@ -153,11 +153,15 @@ export default function AccountsPage() {
     }
   };
 
-  const handleSettleWithdrawal = async (record) => {
+  const handleSettleWithdrawal = async (record, amount) => {
     try {
-      if (record.settled) await accountsService.unsettleWithdrawal(record._id);
-      else await accountsService.settleWithdrawal(record._id);
-      toast.success(record.settled ? 'Marked as unsettled' : 'Marked as settled');
+      if (record.settled) {
+        await accountsService.unsettleWithdrawal(record._id);
+        toast.success('Marked as unsettled');
+      } else {
+        await accountsService.settleWithdrawal(record._id, amount);
+        toast.success(amount ? `Settled ${fmt(amount)}` : 'Fully settled');
+      }
       fetchData();
     } catch {
       toast.error('Failed to update');
@@ -877,11 +881,14 @@ function ExpensesTab({ expenses, loading, showForm, setShowForm, form, setForm, 
 // ─── Withdrawals Tab (split by person) ───────────────
 function WithdrawalsTab({ withdrawals, loading, showForm, setShowForm, form, setForm, saving, onSave, onReset, onDelete, onEdit, editingId, onSettle }) {
   const [personFilter, setPersonFilter] = useState('all');
+  const [settlingId, setSettlingId] = useState(null);
+  const [settleAmount, setSettleAmount] = useState('');
 
-  const akshatPending = withdrawals.filter((w) => w.person === 'akshat' && !w.settled).reduce((s, w) => s + w.amount, 0);
-  const bhavyaPending = withdrawals.filter((w) => w.person === 'bhavya' && !w.settled).reduce((s, w) => s + w.amount, 0);
-  const akshatSettled = withdrawals.filter((w) => w.person === 'akshat' && w.settled).reduce((s, w) => s + w.amount, 0);
-  const bhavyaSettled = withdrawals.filter((w) => w.person === 'bhavya' && w.settled).reduce((s, w) => s + w.amount, 0);
+  const remaining = (w) => Math.max(0, w.amount - (w.settledAmount || 0));
+  const akshatPending = withdrawals.filter((w) => w.person === 'akshat' && !w.settled).reduce((s, w) => s + remaining(w), 0);
+  const bhavyaPending = withdrawals.filter((w) => w.person === 'bhavya' && !w.settled).reduce((s, w) => s + remaining(w), 0);
+  const akshatSettled = withdrawals.filter((w) => w.person === 'akshat').reduce((s, w) => s + (w.settledAmount || 0), 0);
+  const bhavyaSettled = withdrawals.filter((w) => w.person === 'bhavya').reduce((s, w) => s + (w.settledAmount || 0), 0);
 
   const filtered = personFilter === 'all' ? withdrawals : withdrawals.filter((w) => w.person === personFilter);
 
@@ -988,38 +995,81 @@ function WithdrawalsTab({ withdrawals, loading, showForm, setShowForm, form, set
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {filtered.map((r) => (
-                <tr key={r._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
-                  <td className="px-3 py-2.5"><Badge size="sm" color={r.person === 'akshat' ? 'primary' : 'success'}>{r.person === 'akshat' ? 'Akshat' : 'Bhavya'}</Badge></td>
-                  <td className={`px-3 py-2.5 text-sm font-semibold ${r.settled ? 'text-slate-400 line-through' : 'text-amber-600'}`}>{fmt(r.amount)}</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[250px]">{r.description || '--'}</td>
-                  <td className="px-3 py-2.5">
-                    {r.settled
-                      ? <Badge size="sm" color="success">Settled{r.settledAt ? ` · ${fmtDate(r.settledAt)}` : ''}</Badge>
-                      : <Badge size="sm" color="warning">Pending</Badge>}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => onSettle(r)}
-                        className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${r.settled ? 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
-                      >
-                        {r.settled ? 'Unsettle' : 'Settle'}
-                      </button>
-                      <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="Edit">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" /></svg>
-                      </button>
-                      <button onClick={() => onDelete(r._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors" title="Delete">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((r) => {
+                const rem = remaining(r);
+                const partial = (r.settledAmount || 0) > 0 && !r.settled;
+                return (
+                  <tr key={r._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                    <td className="px-3 py-2.5"><Badge size="sm" color={r.person === 'akshat' ? 'primary' : 'success'}>{r.person === 'akshat' ? 'Akshat' : 'Bhavya'}</Badge></td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-sm font-semibold ${r.settled ? 'text-slate-400 line-through' : 'text-amber-600'}`}>{fmt(r.amount)}</span>
+                      {partial && (
+                        <span className="block text-[10px] text-emerald-600">Paid: {fmt(r.settledAmount)} · Left: {fmt(rem)}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-slate-500">{fmtDate(r.date)}</td>
+                    <td className="px-3 py-2.5 text-sm text-slate-500 truncate max-w-[250px]">{r.description || '--'}</td>
+                    <td className="px-3 py-2.5">
+                      {r.settled
+                        ? <Badge size="sm" color="success">Settled{r.settledAt ? ` · ${fmtDate(r.settledAt)}` : ''}</Badge>
+                        : partial
+                          ? <Badge size="sm" color="primary">Partial</Badge>
+                          : <Badge size="sm" color="warning">Pending</Badge>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {!r.settled && settlingId === r._id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={settleAmount}
+                              onChange={(e) => setSettleAmount(e.target.value)}
+                              placeholder={String(rem)}
+                              className="w-20 px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { onSettle(r, Number(settleAmount) || rem); setSettlingId(null); setSettleAmount(''); }
+                                if (e.key === 'Escape') { setSettlingId(null); setSettleAmount(''); }
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => { onSettle(r, Number(settleAmount) || rem); setSettlingId(null); setSettleAmount(''); }}
+                              className="px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                            >
+                              OK
+                            </button>
+                            <button
+                              onClick={() => { setSettlingId(null); setSettleAmount(''); }}
+                              className="px-1 py-1 text-xs text-slate-400 hover:text-slate-600"
+                            >
+                              esc
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (r.settled) { onSettle(r); }
+                              else { setSettlingId(r._id); setSettleAmount(''); }
+                            }}
+                            className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${r.settled ? 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                          >
+                            {r.settled ? 'Unsettle' : 'Settle'}
+                          </button>
+                        )}
+                        <button onClick={() => onEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="Edit">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" /></svg>
+                        </button>
+                        <button onClick={() => onDelete(r._id)} className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 transition-colors" title="Delete">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               <tr className="bg-slate-50 dark:bg-slate-800 font-semibold">
                 <td className="px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300">Total Pending</td>
-                <td className="px-3 py-2.5 text-sm text-amber-600">{fmt(filtered.reduce((s, w) => s + (w.settled ? 0 : w.amount), 0))}</td>
+                <td className="px-3 py-2.5 text-sm text-amber-600">{fmt(filtered.reduce((s, w) => s + remaining(w), 0))}</td>
                 <td colSpan={4} />
               </tr>
             </tbody>
